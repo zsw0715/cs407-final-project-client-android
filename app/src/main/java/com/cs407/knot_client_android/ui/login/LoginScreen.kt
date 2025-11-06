@@ -4,6 +4,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -16,6 +17,7 @@ import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -145,11 +147,18 @@ fun LoginScreen(
         animationStarted = true
     }
     
-    // 背景色 #F8F6F4 - 更温暖的米白色
+    // 背景渐变 - 从上到下增加温度感
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF8F6F4)),
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFFF8F6F4), // 顶部：温暖米白
+                        Color(0xFFF3F0FA)  // 底部：淡紫色调
+                    )
+                )
+            ),
         contentAlignment = BiasAlignment(0f, -0.15f) // 稍微往上偏移，视觉中心
     ) {
         Column(
@@ -292,7 +301,18 @@ fun LoginScreen(
             
             Spacer(modifier = Modifier.height(32.dp))
             
-            // 8. Action Button - 带动画
+            // 8. Action Button - 带动画和点击缩放效果
+            val buttonInteractionSource = remember { MutableInteractionSource() }
+            val isButtonPressed by buttonInteractionSource.collectIsPressedAsState()
+            val buttonScale by animateFloatAsState(
+                targetValue = if (isButtonPressed) 0.95f else 1f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                ),
+                label = "button scale"
+            )
+            
             Button(
                 onClick = { 
                     if (isLogin) {
@@ -305,12 +325,14 @@ fun LoginScreen(
                     .fillMaxWidth()
                     .height(50.dp)
                     .offset { IntOffset(0, buttonOffsetY.roundToInt()) }
-                    .alpha(buttonAlpha),
+                    .alpha(buttonAlpha)
+                    .scale(buttonScale), // 点击缩放效果
                 shape = RoundedCornerShape(18.dp), // 更大圆角
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color.Transparent
                 ),
-                contentPadding = PaddingValues(0.dp) // 移除默认内边距，保持与 toggle 一致
+                contentPadding = PaddingValues(0.dp), // 移除默认内边距，保持与 toggle 一致
+                interactionSource = buttonInteractionSource
             ) {
                 Box(
                     modifier = Modifier
