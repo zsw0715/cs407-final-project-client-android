@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">knot_client_android</string>
+    <string name="error_username_empty">Username is empty</string>
+    <string name="error_password_empty">Password is empty</string>
+    <string name="error_password_short">Password is too short</string>
+    <string name="error_password_requirements">Password should contain at least one lowercase letter, one uppercase letter, and one digit</string>
+    <string name="error_password_mismatch">Passwords do not match</string>
 </resources>
