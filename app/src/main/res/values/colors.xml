@@ -7,4 +7,13 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- color for transparent effect -->
+    <color name="transparent_white">#00FFFFFF</color>
+    <color name="white_alpha_60">#99FFFFFF</color>
+    <color name="frosted_glass_bg">#80FFFFFF</color>
+    <color name="dark_grey_text">#44FFFFFF</color>
+
+    <!-- button color -->
+    <color name="accent_color">#4CAF50</color>
 </resources>
