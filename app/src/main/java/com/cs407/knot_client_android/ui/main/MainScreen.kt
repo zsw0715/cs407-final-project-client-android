@@ -81,7 +81,7 @@ fun MainScreen(
                 .padding(start = currentPadding, bottom = currentPadding)
         )
         
-        // 圆形浮动按钮 - 根据不同页面显示不同图标
+        // 圆形浮动按钮 - 根据不同页面显示不同图标，展开时消失
         FloatingActionButton(
             icon = when (selectedTab) {
                 NavTab.MAP -> Icons.Filled.Add // 地图页面：添加按钮
@@ -104,6 +104,7 @@ fun MainScreen(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(end = currentPadding, bottom = currentPadding)
+                .alpha(1f - expandProgress) // 展开时淡出消失
         )
     }
 }
