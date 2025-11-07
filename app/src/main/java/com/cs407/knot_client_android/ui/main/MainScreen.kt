@@ -21,6 +21,8 @@ import com.cs407.knot_client_android.ui.map.MapScreen
 import com.cs407.knot_client_android.ui.profile.ProfileScreen
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import com.cs407.knot_client_android.navigation.Screen
+import com.cs407.knot_client_android.ui.friend.FriendScreen
 
 @Composable
 fun MainScreen(
@@ -99,6 +101,7 @@ fun MainScreen(
                 NavTab.MAP -> Icons.Filled.Add // 地图页面：添加按钮
                 NavTab.CHAT -> Icons.Filled.Person // 聊天页面：搜索按钮
                 NavTab.PROFILE -> null // 个人资料页面：不显示
+                NavTab.FRIEND -> Icons.Filled.Person // 好友页面：搜索按钮
             },
             onClick = {
                 when (selectedTab) {
@@ -106,10 +109,15 @@ fun MainScreen(
                         // TODO: 添加新标记/地点
                     }
                     NavTab.CHAT -> {
-                        // TODO: 搜索聊天
+                        // 跳转至好友页面
+                        navController.navigate(Screen.Friend.route)
                     }
                     NavTab.PROFILE -> {
                         // 不显示按钮
+                    }
+                    NavTab.FRIEND -> {
+                        // 跳转至好友页面
+                        navController.navigate(Screen.Friend.route)
                     }
                 }
             },

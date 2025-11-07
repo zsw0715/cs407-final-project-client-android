@@ -7,10 +7,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.cs407.knot_client_android.ui.login.LoginScreen
 import com.cs407.knot_client_android.ui.main.MainScreen
+import com.cs407.knot_client_android.ui.friend.FriendScreen
 
 sealed class Screen(val route: String) {
     object Login : Screen("login")
     object Main : Screen("main")
+    object Friend : Screen("friend")
 }
 
 // 主要的 Navigation 设置函数
@@ -27,6 +29,9 @@ fun SetupNavGraph(
         }
         composable(route = Screen.Main.route) {
             MainScreen(navController = navController)
+        }
+        composable(route = Screen.Friend.route) {
+            FriendScreen(navController = navController)
         }
     }
 }

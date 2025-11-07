@@ -1,4 +1,4 @@
-package com.cs407.knot_client_android.ui.chat
+package com.cs407.knot_client_android.ui.friend
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,7 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.background
 
 @Composable
-fun ChatScreen(
+fun FriendScreen(
     navController: NavHostController
 ) {
     Box(
@@ -34,7 +34,7 @@ fun ChatScreen(
         
     ) {
         Text(
-            text = "This is a Chat page",
+            text = "This is a Friend page",
             fontSize = 24.sp,
             fontWeight = FontWeight.Medium
         )
@@ -43,7 +43,7 @@ fun ChatScreen(
 
 @Preview(showBackground = true)
 @Composable
-fun ChatScreenPreview() {
-    ChatScreen(navController = rememberNavController())
+fun FriendScreenPreview() {
+    FriendScreen(navController = rememberNavController())
 }
 

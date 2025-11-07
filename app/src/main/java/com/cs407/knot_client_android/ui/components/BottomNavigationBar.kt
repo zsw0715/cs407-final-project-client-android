@@ -33,7 +33,8 @@ import com.cs407.knot_client_android.R
 enum class NavTab {
     MAP,
     CHAT,
-    PROFILE
+    PROFILE,
+    FRIEND
 }
 
 @Composable
@@ -87,6 +88,7 @@ fun BottomNavigationBar(
                     NavTab.MAP -> 4.dp  // 第一个位置
                     NavTab.CHAT -> buttonWidth + 4.dp  // 第二个位置
                     NavTab.PROFILE -> buttonWidth * 2 + 4.dp  // 第三个位置
+                    NavTab.FRIEND -> buttonWidth + 4.dp
                 },
                 animationSpec = spring(
                     dampingRatio = 0.6f, // 对应 cubic-bezier(0.34, 1.56, 0.64, 1)
