@@ -117,7 +117,10 @@ fun FloatingActionButton(
                 imageVector = icon,
                 contentDescription = null,
                 modifier = Modifier.size(28.dp),
-                tint = Color(0xFF6B7280) // gray-600，与 BottomNavigationBar 未选中颜色一致
+                tint = if (isPressed) 
+                    Color(0xFF636EF1) // 按下时：蓝紫色，与 BottomNavigationBar 选中颜色一致
+                else 
+                    Color(0xFF6B7280) // 正常时：gray-600，与 BottomNavigationBar 未选中颜色一致
             )
         }
     }
