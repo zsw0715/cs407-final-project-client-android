@@ -51,9 +51,10 @@ fun ExpandableBottomSheet(
     val screenWidth = configuration.screenWidthDp.dp
     val screenHeight = configuration.screenHeightDp.dp
     
-    // 收起和展开的高度
+    // 三个高度状态：收起、半展开、全展开
     val collapsedHeight = 64.dp
-    val expandedHeight = screenHeight * 0.5f
+    val expandedHeight = screenHeight * 0.5f  // 半展开：50%
+    val maxExpandedHeight = screenHeight * 0.9f  // 全展开：90%
     
     // 动画状态
     val animatedHeight = remember { Animatable(collapsedHeight.value) }
@@ -62,7 +63,7 @@ fun ExpandableBottomSheet(
     // 当前高度（Dp）
     val currentHeight = animatedHeight.value.dp
     
-    // 展开进度 (0f = 收起, 1f = 展开)
+    // 展开进度 (0f = 收起, 1f = 半展开, 更高时可以超过1f)
     val progress = ((animatedHeight.value - collapsedHeight.value) / 
                     (expandedHeight.value - collapsedHeight.value)).coerceIn(0f, 1f)
     
@@ -77,27 +78,20 @@ fun ExpandableBottomSheet(
     // 搜索框输入状态
     var searchQuery by remember { mutableStateOf("") }
     
-    // 拖动结束后的处理
+    // 拖动结束后的处理 - 支持三个状态：收起(64dp)、半展开(50%)、全展开(80%)
     fun snapToTarget() {
         coroutineScope.launch {
-            val totalRange = expandedHeight.value - collapsedHeight.value
-            val dragDistance = animatedHeight.value - dragStartHeight
-            val dragPercentage = kotlin.math.abs(dragDistance) / totalRange
+            val current = animatedHeight.value
             
-            // 如果拖动超过总范围的 20%，则自动完成展开/收起
-            val target = if (dragPercentage > 0.2f) {
-                // 根据拖动方向决定目标
-                if (dragDistance > 0) {
-                    // 高度增加 → 向上拖动 → 展开
-                    expandedHeight.value
-                } else {
-                    // 高度减少 → 向下拖动 → 收起
-                    collapsedHeight.value
-                }
-            } else {
-                // 拖动不足 20%，回到起始位置
-                dragStartHeight
-            }
+            // 定义三个吸附点
+            val snapPoints = listOf(
+                collapsedHeight.value,      // 64dp
+                expandedHeight.value,        // 50%
+                maxExpandedHeight.value      // 80%
+            )
+            
+            // 找到最接近的吸附点
+            val target = snapPoints.minByOrNull { kotlin.math.abs(it - current) } ?: expandedHeight.value
             
             animatedHeight.animateTo(
                 targetValue = target,
@@ -170,10 +164,10 @@ fun ExpandableBottomSheet(
                                     onVerticalDrag = { change, dragAmount ->
                                         change.consume()
                                         
-                                        // 实时跟随手指，不触发任何自动动画
+                                        // 实时跟随手指，不触发任何自动动画，最高可以拖到80%
                                         val newHeight = (animatedHeight.value - dragAmount).coerceIn(
                                             collapsedHeight.value,
-                                            expandedHeight.value
+                                            maxExpandedHeight.value
                                         )
                                         coroutineScope.launch {
                                             animatedHeight.snapTo(newHeight)
@@ -224,10 +218,10 @@ fun ExpandableBottomSheet(
                                             onVerticalDrag = { change, dragAmount ->
                                                 change.consume()
                                                 
-                                                // 实时跟随手指，不触发任何自动动画
+                                                // 实时跟随手指，不触发任何自动动画，最高可以拖到80%
                                                 val newHeight = (animatedHeight.value - dragAmount).coerceIn(
                                                     collapsedHeight.value,
-                                                    expandedHeight.value
+                                                    maxExpandedHeight.value
                                                 )
                                                 coroutineScope.launch {
                                                     animatedHeight.snapTo(newHeight)
