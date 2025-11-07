@@ -2,6 +2,9 @@ package com.cs407.knot_client_android.ui.main
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -10,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.cs407.knot_client_android.ui.chat.ChatScreen
 import com.cs407.knot_client_android.ui.components.BottomNavigationBar
+import com.cs407.knot_client_android.ui.components.FloatingActionButton
 import com.cs407.knot_client_android.ui.components.NavTab
 import com.cs407.knot_client_android.ui.map.MapScreen
 import com.cs407.knot_client_android.ui.profile.ProfileScreen
@@ -62,6 +66,31 @@ fun MainScreen(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .padding(start = 30.dp, bottom = 30.dp)
+        )
+        
+        // 圆形浮动按钮 - 根据不同页面显示不同图标
+        FloatingActionButton(
+            icon = when (selectedTab) {
+                NavTab.MAP -> Icons.Filled.Add // 地图页面：添加按钮
+                NavTab.CHAT -> Icons.Filled.Search // 聊天页面：搜索按钮
+                NavTab.PROFILE -> null // 个人资料页面：不显示
+            },
+            onClick = {
+                when (selectedTab) {
+                    NavTab.MAP -> {
+                        // TODO: 添加新标记/地点
+                    }
+                    NavTab.CHAT -> {
+                        // TODO: 搜索聊天
+                    }
+                    NavTab.PROFILE -> {
+                        // 不显示按钮
+                    }
+                }
+            },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 30.dp, bottom = 30.dp)
         )
     }
 }
