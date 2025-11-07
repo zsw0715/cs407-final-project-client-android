@@ -28,11 +28,22 @@ fun MainScreen(
 ) {
     var selectedTab by remember { mutableStateOf(NavTab.MAP) }
     
-    // 展开进度（0f = 收起, 1f = 展开）
+    // 展开进度（0f = 收起, 1f = 半展开, 2f = 全展开）
     var expandProgress by remember { mutableStateOf(0f) }
     
-    // 根据展开进度计算 padding：收起时 30dp，展开时 8dp
-    val currentPadding = (30 - (30 - 8) * expandProgress).dp
+    // 根据展开进度计算 padding：
+    // 收起时 30dp，半展开时 8dp，全展开时 0dp
+    val currentPadding = when {
+        expandProgress <= 1f -> {
+            // 第一阶段：30dp -> 8dp
+            (30 - (30 - 8) * expandProgress).dp
+        }
+        else -> {
+            // 第二阶段：8dp -> 0dp
+            val phase2Progress = expandProgress - 1f
+            (8 - 8 * phase2Progress).dp
+        }
+    }
     
     // 禁用侧滑返回
     BackHandler(enabled = true) {

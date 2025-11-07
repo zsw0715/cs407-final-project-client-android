@@ -63,13 +63,25 @@ fun ExpandableBottomSheet(
     // 当前高度（Dp）
     val currentHeight = animatedHeight.value.dp
     
-    // 展开进度 (0f = 收起, 1f = 半展开, 更高时可以超过1f)
+    // 展开进度 (0f = 收起, 1f = 半展开) - 用于内部动画
     val progress = ((animatedHeight.value - collapsedHeight.value) / 
                     (expandedHeight.value - collapsedHeight.value)).coerceIn(0f, 1f)
     
+    // 完整展开进度 (0f = 收起, 1f = 半展开, 2f = 全展开) - 用于通知外部
+    val fullProgress = when {
+        animatedHeight.value <= expandedHeight.value -> {
+            ((animatedHeight.value - collapsedHeight.value) / 
+             (expandedHeight.value - collapsedHeight.value)).coerceIn(0f, 1f)
+        }
+        else -> {
+            1f + ((animatedHeight.value - expandedHeight.value) / 
+                  (maxExpandedHeight.value - expandedHeight.value)).coerceIn(0f, 1f)
+        }
+    }
+    
     // 通知外部展开进度变化
-    LaunchedEffect(progress) {
-        onExpandProgressChange(progress)
+    LaunchedEffect(fullProgress) {
+        onExpandProgressChange(fullProgress)
     }
     
     // 记录拖动起始高度
@@ -78,14 +90,14 @@ fun ExpandableBottomSheet(
     // 搜索框输入状态
     var searchQuery by remember { mutableStateOf("") }
     
-    // 拖动结束后的处理 - 支持三个状态：收起(64dp)、半展开(50%)、全展开(80%)
+    // 拖动结束后的处理 - 支持三个状态：收起(70dp)、半展开(50%)、全展开(93%)
     fun snapToTarget() {
         coroutineScope.launch {
             val current = animatedHeight.value
             
             // 定义三个吸附点
             val snapPoints = listOf(
-                collapsedHeight.value,      // 64dp
+                collapsedHeight.value,      // 70dp
                 expandedHeight.value,        // 50%
                 maxExpandedHeight.value      // 93%
             )
@@ -104,12 +116,30 @@ fun ExpandableBottomSheet(
     }
     
     Box(modifier = modifier) {
-        // 当前宽度（收起时窄，展开时宽）
-        // 展开时宽度 = screenWidth - 16.dp（因为 MainScreen 左右各有 8dp padding）
-        val currentWidth = 272.dp + (screenWidth - 272.dp - 16.dp) * progress
+        // 判断是否处于第二阶段（半展开到全展开）
+        val isPhase2 = animatedHeight.value > expandedHeight.value
         
-        // 动态圆角（收起时 44dp，展开时 48dp）
-        val currentCornerRadius = 44.dp + 16.dp * progress
+        // 当前宽度：三段式变化
+        // 阶段1: 272.dp -> (screenWidth - 16.dp)
+        // 阶段2: (screenWidth - 16.dp) -> screenWidth
+        val currentWidth = if (isPhase2) {
+            val phase2Progress = ((animatedHeight.value - expandedHeight.value) / 
+                                  (maxExpandedHeight.value - expandedHeight.value)).coerceIn(0f, 1f)
+            (screenWidth - 16.dp) + 16.dp * phase2Progress
+        } else {
+            272.dp + (screenWidth - 272.dp - 16.dp) * progress
+        }
+        
+        // 动态圆角：三段式变化
+        // 阶段1: 44.dp -> 60.dp
+        // 阶段2: 60.dp -> 30.dp
+        val currentCornerRadius = if (isPhase2) {
+            val phase2Progress = ((animatedHeight.value - expandedHeight.value) / 
+                                  (maxExpandedHeight.value - expandedHeight.value)).coerceIn(0f, 1f)
+            60.dp - 30.dp * phase2Progress
+        } else {
+            44.dp + 16.dp * progress
+        }
         
         // 毛玻璃背景层 - Android 原生系统级模糊
         // 动态透明度：收起时 0.5，展开时 0.9
