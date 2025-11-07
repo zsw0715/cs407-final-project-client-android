@@ -65,55 +65,31 @@ fun ExpandableBottomSheet(
         onExpandProgressChange(progress)
     }
     
-    // 累计拖动距离（用于判断拖动意图）
-    var accumulatedDrag by remember { mutableStateOf(0f) }
-    val dragThreshold = with(LocalDensity.current) { 30.dp.toPx() } // 拖动阈值
+    // 记录拖动起始高度
+    var dragStartHeight by remember { mutableStateOf(0f) }
     
-    // 用于计算拖动速度（惯性滚动）
-    var lastDragTime by remember { mutableStateOf(0L) }
-    var lastDragAmount by remember { mutableStateOf(0f) }
-    
-    // 拖动结束后的处理（带惯性）
+    // 拖动结束后的处理
     fun snapToTarget() {
         coroutineScope.launch {
-            // 计算拖动速度（用于惯性判断）
-            val currentTime = System.currentTimeMillis()
-            val timeDelta = (currentTime - lastDragTime).coerceAtLeast(1)
-            val velocity = lastDragAmount / timeDelta * 1000 // px/s
+            val totalRange = expandedHeight.value - collapsedHeight.value
+            val dragDistance = animatedHeight.value - dragStartHeight
+            val dragPercentage = kotlin.math.abs(dragDistance) / totalRange
             
-            // 如果速度够快，根据速度方向判断；否则根据中点判断
-            val target = if (kotlin.math.abs(velocity) > 500f) {
-                // 快速滑动：根据速度方向
-                if (velocity < 0) expandedHeight.value else collapsedHeight.value
-            } else {
-                // 慢速滑动：根据位置中点
-                if (animatedHeight.value > (collapsedHeight.value + expandedHeight.value) / 2) {
+            // 如果拖动超过总范围的 20%，则自动完成展开/收起
+            val target = if (dragPercentage > 0.2f) {
+                // 根据拖动方向决定目标
+                if (dragDistance > 0) {
+                    // 高度增加 → 向上拖动 → 展开
                     expandedHeight.value
                 } else {
+                    // 高度减少 → 向下拖动 → 收起
                     collapsedHeight.value
                 }
+            } else {
+                // 拖动不足 20%，回到起始位置
+                dragStartHeight
             }
             
-            animatedHeight.animateTo(
-                targetValue = target,
-                animationSpec = spring(
-                    dampingRatio = 0.75f, // 更柔和的阻尼
-                    stiffness = 120f // 降低弹性，更丝滑
-                )
-            )
-        }
-    }
-    
-    // 根据拖动方向自动完成动画（带惯性）
-    fun autoCompleteByDirection(dragDirection: Float) {
-        coroutineScope.launch {
-            val target = if (dragDirection < 0) {
-                // 向上拖动 → 展开
-                expandedHeight.value
-            } else {
-                // 向下拖动 → 收起
-                collapsedHeight.value
-            }
             animatedHeight.animateTo(
                 targetValue = target,
                 animationSpec = spring(
@@ -170,37 +146,22 @@ fun ExpandableBottomSheet(
                             Modifier.pointerInput(Unit) {
                                 detectVerticalDragGestures(
                                     onDragStart = {
-                                        accumulatedDrag = 0f
-                                        lastDragTime = System.currentTimeMillis()
-                                        lastDragAmount = 0f
+                                        // 记录起始高度
+                                        dragStartHeight = animatedHeight.value
                                     },
                                     onDragEnd = {
-                                        accumulatedDrag = 0f
                                         snapToTarget()
                                     },
                                     onVerticalDrag = { change, dragAmount ->
                                         change.consume()
                                         
-                                        // 记录拖动速度
-                                        lastDragTime = System.currentTimeMillis()
-                                        lastDragAmount = dragAmount
-                                        
-                                        // 累计拖动距离
-                                        accumulatedDrag += dragAmount
-                                        
-                                        // 如果拖动超过阈值，自动完成动画
-                                        if (kotlin.math.abs(accumulatedDrag) > dragThreshold) {
-                                            autoCompleteByDirection(accumulatedDrag)
-                                            accumulatedDrag = 0f
-                                        } else {
-                                            // 否则继续实时跟随
-                                            val newHeight = (animatedHeight.value - dragAmount).coerceIn(
-                                                collapsedHeight.value,
-                                                expandedHeight.value
-                                            )
-                                            coroutineScope.launch {
-                                                animatedHeight.snapTo(newHeight)
-                                            }
+                                        // 实时跟随手指，不触发任何自动动画
+                                        val newHeight = (animatedHeight.value - dragAmount).coerceIn(
+                                            collapsedHeight.value,
+                                            expandedHeight.value
+                                        )
+                                        coroutineScope.launch {
+                                            animatedHeight.snapTo(newHeight)
                                         }
                                     }
                                 )
@@ -215,7 +176,7 @@ fun ExpandableBottomSheet(
             }
             
             // 展开状态：显示内容
-            if (progress > 0.1f) {
+            if (progress > 0.0f) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -277,37 +238,22 @@ fun ExpandableBottomSheet(
                                     Modifier.pointerInput(Unit) {
                                         detectVerticalDragGestures(
                                             onDragStart = {
-                                                accumulatedDrag = 0f
-                                                lastDragTime = System.currentTimeMillis()
-                                                lastDragAmount = 0f
+                                                // 记录起始高度
+                                                dragStartHeight = animatedHeight.value
                                             },
                                             onDragEnd = {
-                                                accumulatedDrag = 0f
                                                 snapToTarget()
                                             },
                                             onVerticalDrag = { change, dragAmount ->
                                                 change.consume()
                                                 
-                                                // 记录拖动速度
-                                                lastDragTime = System.currentTimeMillis()
-                                                lastDragAmount = dragAmount
-                                                
-                                                // 累计拖动距离
-                                                accumulatedDrag += dragAmount
-                                                
-                                                // 如果拖动超过阈值，自动完成动画
-                                                if (kotlin.math.abs(accumulatedDrag) > dragThreshold) {
-                                                    autoCompleteByDirection(accumulatedDrag)
-                                                    accumulatedDrag = 0f
-                                                } else {
-                                                    // 否则继续实时跟随
-                                                    val newHeight = (animatedHeight.value - dragAmount).coerceIn(
-                                                        collapsedHeight.value,
-                                                        expandedHeight.value
-                                                    )
-                                                    coroutineScope.launch {
-                                                        animatedHeight.snapTo(newHeight)
-                                                    }
+                                                // 实时跟随手指，不触发任何自动动画
+                                                val newHeight = (animatedHeight.value - dragAmount).coerceIn(
+                                                    collapsedHeight.value,
+                                                    expandedHeight.value
+                                                )
+                                                coroutineScope.launch {
+                                                    animatedHeight.snapTo(newHeight)
                                                 }
                                             }
                                         )
