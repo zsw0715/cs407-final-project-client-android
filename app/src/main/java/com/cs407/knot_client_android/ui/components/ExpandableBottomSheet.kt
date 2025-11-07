@@ -6,10 +6,12 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
@@ -194,15 +196,20 @@ fun ExpandableBottomSheet(
                     modifier = Modifier
                         .fillMaxSize()
                         .alpha(progress)
-                        .padding(horizontal = 20.dp, vertical = 18.dp)
+                        .clickable (
+                            enabled = true,
+                            onClick = {},  // 消费点击事件，不让它穿透
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() }
+                        )
+                        .padding(horizontal = 16.dp, vertical = 20.dp)
                         .background(Color.White.copy(alpha = blurAlpha))
                 ) {
                     // 拖动指示器（始终可拖动） 
                     Box(
                         modifier = Modifier
-                            .width(80.dp)
-                            .height(24.dp)
-                            .align(Alignment.CenterHorizontally)
+                            .height(64.dp)
+                            .fillMaxWidth()
                             .then(
                                 if (isDraggable) {  // 移除 progress 限制，始终可拖动
                                     Modifier.pointerInput(Unit) {
@@ -232,94 +239,94 @@ fun ExpandableBottomSheet(
                             ),
                         contentAlignment = Alignment.Center
                     ) {
-                        Box(
+
+                        // 顶部：搜索框 + 头像
+                        Row(
                             modifier = Modifier
-                                .width(80.dp)
-                                .height(2.dp)
-                                .clip(RoundedCornerShape(2.dp))
-                                .background(Color(0xFFD1D5DB))
-                        )
-                    }
-
-
-                    // 顶部：搜索框 + 头像
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(64.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // 搜索框（样式同步登录页输入框）
-                        OutlinedTextField(
-                            value = searchQuery,
-                            onValueChange = { searchQuery = it },
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(56.dp),
-                            placeholder = {
-                                Text(
-                                    "Search posts",
-                                    color = Color(0xFFAAAAAA),
-                                    fontSize = 15.sp
-                                )
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Filled.Search,
-                                    contentDescription = "Search",
-                                    tint = Color(0xFF9B8FD9).copy(alpha = 0.7f)
-                                )
-                            },
-                            shape = RoundedCornerShape(32.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                unfocusedBorderColor = Color(0xFFE0E0E0),
-                                focusedBorderColor = Color(0xFFB5A8FF), // 淡紫色
-                                unfocusedContainerColor = Color.White.copy(alpha = 0.8f),
-                                focusedContainerColor = Color.White
-                            ),
-                            singleLine = true
-                        )
-
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        // 头像
-                        Image(
-                            painter = painterResource(id = R.drawable.user_avatar),
-                            contentDescription = "Profile",
-                            modifier = Modifier
-                                .size(56.dp)
-                                .clip(CircleShape)
-                                .border(
-                                    width = 2.dp,
-                                    color = Color(0xFFB0B0B0), // 柔和浅灰色边框
-                                    shape = CircleShape
+                                .fillMaxWidth()
+                                .height(64.dp)
+                                .padding(horizontal = 8.dp), // 给点左右边距
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // 搜索框（样式同步登录页输入框）
+                            OutlinedTextField(
+                                value = searchQuery,
+                                onValueChange = { searchQuery = it },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(56.dp),
+                                placeholder = {
+                                    Text(
+                                        "Search posts",
+                                        color = Color(0xFFAAAAAA),
+                                        fontSize = 15.sp
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Filled.Search,
+                                        contentDescription = "Search",
+                                        tint = Color(0xFF9B8FD9).copy(alpha = 0.7f)
+                                    )
+                                },
+                                shape = RoundedCornerShape(32.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    unfocusedBorderColor = Color(0xFFE0E0E0),
+                                    focusedBorderColor = Color(0xFFB5A8FF), // 淡紫色
+                                    unfocusedContainerColor = Color.White.copy(alpha = 0.8f),
+                                    focusedContainerColor = Color.White
                                 ),
-                            contentScale = ContentScale.Crop
-                        )
+                                singleLine = true
+                            )
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            // 头像
+                            Image(
+                                painter = painterResource(id = R.drawable.user_avatar),
+                                contentDescription = "Profile",
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .clip(CircleShape)
+                                    .border(
+                                        width = 2.dp,
+                                        color = Color(0xFFB0B0B0),
+                                        shape = CircleShape
+                                    ),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
                     }
-                    
-                    // Spacer(modifier = Modifier.height(8.dp))
-                    
-                    
+
                     Spacer(modifier = Modifier.height(16.dp))
                     
                     // POSTS 标题
-                    Text(
-                        text = "POSTS",
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1C1B1F)
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // 占位内容
-                    Text(
-                        text = "这里显示帖子内容\n\nPlaceholder Content",
-                        fontSize = 14.sp,
-                        color = Color(0xFF6B7280)
-                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                    ) {
+                        Text(
+                            text = "POSTS",
+                            fontSize = 24.sp, // 稍微小一点，更精致
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF1C1B1F)
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // 副标题（Slogan）
+                        Text(
+                            text = "Share your little footprints with close friends 🌍",
+                            fontSize = 14.sp,
+                            color = Color(0xFF9B9B9B),
+                            fontWeight = FontWeight.Medium
+                        )
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                    }
                 }
             }
         }
