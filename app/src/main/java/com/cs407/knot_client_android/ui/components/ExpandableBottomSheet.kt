@@ -54,7 +54,7 @@ fun ExpandableBottomSheet(
     // 三个高度状态：收起、半展开、全展开
     val collapsedHeight = 70.dp
     val expandedHeight = screenHeight * 0.5f  // 半展开：50%
-    val maxExpandedHeight = screenHeight * 0.9f  // 全展开：90%
+    val maxExpandedHeight = screenHeight * 0.93f  // 全展开：93%
     
     // 动画状态
     val animatedHeight = remember { Animatable(collapsedHeight.value) }
@@ -125,7 +125,8 @@ fun ExpandableBottomSheet(
                         .createBlurEffect(40f, 40f, Shader.TileMode.CLAMP)
                         .asComposeRenderEffect()
                 }
-                .background(Color.White.copy(alpha = blurAlpha))
+                // .background(Color.White.copy(alpha = blurAlpha))
+                .background(if (progress < 0.8f) Color.White.copy(alpha = blurAlpha) else Color(0xFFF8F6F4).copy(alpha = blurAlpha))
         )
         
         // 主容器
@@ -197,7 +198,7 @@ fun ExpandableBottomSheet(
                             interactionSource = remember { MutableInteractionSource() }
                         )
                         .padding(horizontal = 16.dp, vertical = 20.dp)
-                        .background(Color.White.copy(alpha = blurAlpha))
+                        .background(Color(0xFFF8F6F4).copy(alpha = blurAlpha))
                 ) {
                     // 拖动指示器（始终可拖动） 
                     Box(
