@@ -13,16 +13,25 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.cs407.knot_client_android.ui.chat.ChatScreen
 import com.cs407.knot_client_android.ui.components.BottomNavigationBar
+import com.cs407.knot_client_android.ui.components.ExpandableBottomSheet
 import com.cs407.knot_client_android.ui.components.FloatingActionButton
 import com.cs407.knot_client_android.ui.components.NavTab
 import com.cs407.knot_client_android.ui.map.MapScreen
 import com.cs407.knot_client_android.ui.profile.ProfileScreen
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 @Composable
 fun MainScreen(
     navController: NavHostController
 ) {
     var selectedTab by remember { mutableStateOf(NavTab.MAP) }
+    
+    // 展开进度（0f = 收起, 1f = 展开）
+    var expandProgress by remember { mutableStateOf(0f) }
+    
+    // 根据展开进度计算 padding：收起时 30dp，展开时 8dp
+    val currentPadding = (30 - (30 - 8) * expandProgress).dp
     
     // 禁用侧滑返回
     BackHandler(enabled = true) {
@@ -57,15 +66,19 @@ fun MainScreen(
             ProfileScreen(navController)
         }
         
-        // 底部导航栏 - 统一管理，不会随页面切换而销毁
-        BottomNavigationBar(
+        // 可展开的底部导航栏 - 只在 MapScreen 时可以拖动白色滑块
+        ExpandableBottomSheet(
             selectedTab = selectedTab,
             onTabSelected = { tab ->
                 selectedTab = tab
             },
+            isDraggable = selectedTab == NavTab.MAP,
+            onExpandProgressChange = { progress ->
+                expandProgress = progress
+            },
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(start = 30.dp, bottom = 30.dp)
+                .padding(start = currentPadding, bottom = currentPadding)
         )
         
         // 圆形浮动按钮 - 根据不同页面显示不同图标
@@ -90,7 +103,7 @@ fun MainScreen(
             },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(end = 30.dp, bottom = 30.dp)
+                .padding(end = currentPadding, bottom = currentPadding)
         )
     }
 }
