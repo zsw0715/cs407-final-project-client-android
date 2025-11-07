@@ -30,6 +30,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import com.cs407.knot_client_android.navigation.Screen
+import com.cs407.knot_client_android.ui.components.LoginToggle
 
 @Composable
 fun LoginScreen(
@@ -181,7 +183,7 @@ fun LoginScreen(
             
             // 2. Slogan - 带动画
             Text(
-                text = "Where friendships leave their marks.",
+                text = "Where friendships leave their marks. \uD83D\uDDFA\uFE0F",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Light,
                 color = Color(0xFF7A7A7A),
@@ -290,7 +292,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(52.dp))
             
             // 7. Toggle Switch - 带动画
-            CustomToggle(
+            LoginToggle(
                 isLogin = isLogin,
                 onToggleChange = { isLogin = it },
                 modifier = Modifier
@@ -317,8 +319,10 @@ fun LoginScreen(
                 onClick = { 
                     if (isLogin) {
                         // TODO: Login logic
+                        navController.navigate(Screen.Map.route)
                     } else {
                         // TODO: Register logic
+                        navController.navigate(Screen.Map.route)
                     }
                 },
                 modifier = Modifier
@@ -356,86 +360,6 @@ fun LoginScreen(
                         color = Color.White
                     )
                 }
-            }
-        }
-    }
-}
-
-@Composable
-fun CustomToggle(
-    isLogin: Boolean,
-    onToggleChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    BoxWithConstraints(
-        modifier = modifier
-            .height(50.dp)
-            .clip(RoundedCornerShape(25.dp))
-            .background(Color(0xFFE8E8E8))
-    ) {
-        val totalWidth = maxWidth
-        val halfWidth = totalWidth / 2
-        
-        val indicatorOffset by animateDpAsState(
-            targetValue = if (isLogin) 0.dp else halfWidth,
-            animationSpec = tween(durationMillis = 300),
-            label = "indicator offset"
-        )
-        
-        // Sliding indicator
-        Box(
-            modifier = Modifier
-                .offset(x = indicatorOffset)
-                .width(halfWidth)
-                .height(50.dp)
-                .padding(4.dp)
-                .clip(RoundedCornerShape(21.dp))
-                .background(Color.White)
-        )
-        
-        // Toggle options
-        Row(
-            modifier = Modifier.fillMaxSize(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            // Login option
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .clickable(
-                        onClick = { onToggleChange(true) },
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() }
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Login",
-                    fontSize = 15.sp,
-                    fontWeight = if (isLogin) FontWeight.Bold else FontWeight.Normal,
-                    color = if (isLogin) Color(0xFF2C2C2C) else Color(0xFF888888)
-                )
-            }
-            
-            // Register option
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .clickable(
-                        onClick = { onToggleChange(false) },
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() }
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Register",
-                    fontSize = 15.sp,
-                    fontWeight = if (!isLogin) FontWeight.Bold else FontWeight.Normal,
-                    color = if (!isLogin) Color(0xFF2C2C2C) else Color(0xFF888888)
-                )
             }
         }
     }
