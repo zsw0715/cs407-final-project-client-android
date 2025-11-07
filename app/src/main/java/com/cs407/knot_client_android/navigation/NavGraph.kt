@@ -6,15 +6,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.cs407.knot_client_android.ui.login.LoginScreen
-import com.cs407.knot_client_android.ui.map.MapScreen
-import com.cs407.knot_client_android.ui.chat.ChatScreen
-import com.cs407.knot_client_android.ui.profile.ProfileScreen
+import com.cs407.knot_client_android.ui.main.MainScreen
 
 sealed class Screen(val route: String) {
     object Login : Screen("login")
-    object Map : Screen("map")
-    object Chat : Screen("chat")
-    object Profile : Screen("profile")
+    object Main : Screen("main")
 }
 
 // 主要的 Navigation 设置函数
@@ -29,14 +25,8 @@ fun SetupNavGraph(
         composable(route = Screen.Login.route) {
             LoginScreen(navController = navController)
         }
-        composable(route = Screen.Map.route) {
-            MapScreen(navController = navController)
-        }
-        composable(route = Screen.Chat.route) {
-            ChatScreen(navController = navController)
-        }
-        composable(route = Screen.Profile.route) {
-            ProfileScreen(navController = navController)
+        composable(route = Screen.Main.route) {
+            MainScreen(navController = navController)
         }
     }
 }
