@@ -52,7 +52,7 @@ fun ExpandableBottomSheet(
     val screenHeight = configuration.screenHeightDp.dp
     
     // 三个高度状态：收起、半展开、全展开
-    val collapsedHeight = 64.dp
+    val collapsedHeight = 70.dp
     val expandedHeight = screenHeight * 0.5f  // 半展开：50%
     val maxExpandedHeight = screenHeight * 0.9f  // 全展开：90%
     
@@ -106,10 +106,10 @@ fun ExpandableBottomSheet(
     Box(modifier = modifier) {
         // 当前宽度（收起时窄，展开时宽）
         // 展开时宽度 = screenWidth - 16.dp（因为 MainScreen 左右各有 8dp padding）
-        val currentWidth = 254.dp + (screenWidth - 254.dp - 16.dp) * progress
+        val currentWidth = 272.dp + (screenWidth - 272.dp - 16.dp) * progress
         
-        // 动态圆角（收起时 32dp，展开时 48dp）
-        val currentCornerRadius = 32.dp + 16.dp * progress
+        // 动态圆角（收起时 44dp，展开时 48dp）
+        val currentCornerRadius = 44.dp + 16.dp * progress
         
         // 毛玻璃背景层 - Android 原生系统级模糊
         // 动态透明度：收起时 0.6，展开时 0.9
@@ -147,8 +147,8 @@ fun ExpandableBottomSheet(
             // 收起状态：显示导航栏（整个区域可拖动）
             Box(
                 modifier = Modifier
-                    .width(254.dp)
-                    .height(64.dp)
+                    .width(272.dp)
+                    .height(70.dp)
                     .alpha(1f - progress)
                     .then(
                         if (isDraggable) {
@@ -202,7 +202,7 @@ fun ExpandableBottomSheet(
                     // 拖动指示器（始终可拖动） 
                     Box(
                         modifier = Modifier
-                            .height(64.dp)
+                            .height(70.dp)
                             .fillMaxWidth()
                             .then(
                                 if (isDraggable) {  // 移除 progress 限制，始终可拖动
@@ -238,7 +238,7 @@ fun ExpandableBottomSheet(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(64.dp)
+                                .height(70.dp)
                                 .padding(horizontal = 8.dp), // 给点左右边距
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically

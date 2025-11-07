@@ -11,6 +11,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.background
 
 @Composable
 fun ProfileScreen(
@@ -18,7 +21,16 @@ fun ProfileScreen(
 ) {
     // Profile 页面内容 - 不再包含导航栏
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFFF8F6F4), // 顶部：温暖米白
+                        Color(0xFFF3F0FA)  // 底部：淡紫色调
+                    )
+                )
+            ),
         contentAlignment = Alignment.Center
     ) {
         Text(

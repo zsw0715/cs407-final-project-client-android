@@ -48,36 +48,28 @@ fun BottomNavigationBar(
         // 毛玻璃背景层 - Android 原生系统级模糊
         Box(
             modifier = Modifier
-                .width(254.dp)
-                .height(64.dp)
-                .clip(RoundedCornerShape(32.dp))
+                .width(272.dp)
+                .height(70.dp)
+                .clip(CircleShape)
                 .graphicsLayer {
                     renderEffect = RenderEffect
                         .createBlurEffect(40f, 40f, Shader.TileMode.CLAMP)
                         .asComposeRenderEffect()
                 }
-                .background(Color.White.copy(alpha = 0.1f))
+                .background(Color.White.copy(alpha = 0f))
         )
         
         // 主容器 (带边框和半透明背景)
         BoxWithConstraints(
             modifier = Modifier
-                .width(254.dp)
-                .height(64.dp)
+                .width(272.dp)
+                .height(70.dp)
                 .border(
                     width = 1.dp,
                     color = Color(0xFFE5E7EB).copy(alpha = 0.6f), // 边框也略微透明
-                    shape = RoundedCornerShape(32.dp)
+                    shape = RoundedCornerShape(44.dp)
                 )
-                .clip(RoundedCornerShape(32.dp))
-                // .background(
-                //     brush = Brush.linearGradient(
-                //         colors = listOf(
-                //             Color.White.copy(alpha = 0.3f),
-                //             Color.White.copy(alpha = 0.2f)
-                //         )
-                //     )
-                // )
+                .clip(CircleShape)
         ) {
             val containerWidth = maxWidth
             val containerHeight = maxHeight
@@ -110,19 +102,19 @@ fun BottomNavigationBar(
                     .width(sliderWidth)
                     .height(sliderHeight)
                     .scale(1.02f)
-                    .clip(RoundedCornerShape(32.dp))
+                    .clip(RoundedCornerShape(44.dp))
                     .background(
                         brush = Brush.linearGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = 0.95f),
-                                Color.White.copy(alpha = 0.85f)
+                                Color.White.copy(alpha = 0.75f),
+                                Color.White.copy(alpha = 0.75f)
                             )
                         )
                     )
                     .border(
                         width = 1.dp,
                         color = Color(0x26636EF1), // 蓝紫色边框
-                        shape = RoundedCornerShape(32.dp)
+                        shape = RoundedCornerShape(44.dp)
                     )
             )
             
