@@ -45,7 +45,7 @@ fun FloatingActionButton(
             scale.animateTo(
                 targetValue = 1.2f,
                 animationSpec = tween(
-                    durationMillis = 140, 
+                    durationMillis = 170, 
                     easing = LinearOutSlowInEasing
                 )
             )
@@ -54,7 +54,7 @@ fun FloatingActionButton(
             scale.animateTo(
                 targetValue = 0.88f,
                 animationSpec = tween(
-                    durationMillis = 135, 
+                    durationMillis = 155, 
                     easing = FastOutLinearInEasing
                 )
             )
@@ -101,8 +101,8 @@ fun FloatingActionButton(
                 .background(
                     brush = Brush.linearGradient(
                         colors = listOf(
-                            Color.White.copy(alpha = 0.95f),
-                            Color.White.copy(alpha = 0.85f)
+                            Color.White.copy(alpha = 0.55f),
+                            Color.White.copy(alpha = 0.55f)
                         )
                     )
                 )
