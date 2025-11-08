@@ -6,6 +6,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -196,6 +197,15 @@ fun MapScreen(
         )
         
         // 显示中心点地名（只在 zoom > 12 时显示）- 带优雅的进入和退出动画
+        // 使用 remember 保存最后一个非空的地名，用于 exit 动画
+        var displayedLocationName by remember { mutableStateOf("") }
+        
+        LaunchedEffect(centerLocationName) {
+            centerLocationName?.let {
+                displayedLocationName = it
+            }
+        }
+        
         AnimatedVisibility(
             visible = centerLocationName != null,
             enter = fadeIn(
@@ -211,64 +221,61 @@ fun MapScreen(
                 )
             ),
             exit = fadeOut(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessMedium
+                animationSpec = tween(
+                    durationMillis = 400
                 )
             ) + scaleOut(
-                targetScale = 1.2f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessMedium
+                targetScale = 0.6f,
+                animationSpec = tween(
+                    durationMillis = 400
                 )
             ),
+            label = "LocationNameVisibility",
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(top = 85.dp, start = 24.dp)
         ) {
-            centerLocationName?.let { name ->
-                val lines = name.split("\n")
-                val mainName = lines.getOrNull(0)?.trim() ?: ""
-                val subName = lines.getOrNull(1)?.trim() ?: ""
+            val lines = displayedLocationName.split("\n")
+            val mainName = lines.getOrNull(0)?.trim() ?: ""
+            val subName = lines.getOrNull(1)?.trim() ?: ""
 
-                Column(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                    horizontalAlignment = Alignment.Start
-                ) {
-                    // 使用 Box 让阴影和主文字重叠
-                    Box {
-                        // 阴影文字
-                        Text(
-                            text = subName,
-                            modifier = Modifier
-                                .offset(x = 2.dp, y = 2.dp)
-                                .alpha(0.6f),
-                            color = Color.White,
-                            fontSize = 38.sp,
-                            fontWeight = FontWeight.ExtraBold
-                        )
+            Column(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                horizontalAlignment = Alignment.Start
+            ) {
+                // 使用 Box 让阴影和主文字重叠
+                Box {
+                    // 阴影文字
+                    Text(
+                        text = subName,
+                        modifier = Modifier
+                            .offset(x = 2.dp, y = 2.dp)
+                            .alpha(0.6f),
+                        color = Color.White,
+                        fontSize = 38.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
 
-                        // 主文字
-                        Text(
-                            text = subName,
-                            color = Color.Black.copy(alpha = 0.8f),
-                            fontSize = 38.sp,
-                            fontWeight = FontWeight.ExtraBold
-                        )
-                    }
+                    // 主文字
+                    Text(
+                        text = subName,
+                        color = Color.Black.copy(alpha = 0.8f),
+                        fontSize = 38.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                }
 
-                    Spacer(modifier = Modifier.padding(5.dp))
-                    // 次标题 - 小一号，灰一点
-                    if (subName.isNotEmpty()) {
-                        Text(
-                            text = mainName,
-                            color = Color(0x99333333), // 60% 深灰
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Medium,
-                            lineHeight = 16.sp,
-                            textAlign = TextAlign.Center
-                        )
-                    }
+                Spacer(modifier = Modifier.padding(5.dp))
+                // 次标题 - 小一号，灰一点
+                if (subName.isNotEmpty()) {
+                    Text(
+                        text = mainName,
+                        color = Color(0x99333333), // 60% 深灰
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Medium,
+                        lineHeight = 16.sp,
+                        textAlign = TextAlign.Center
+                    )
                 }
             }
         }
