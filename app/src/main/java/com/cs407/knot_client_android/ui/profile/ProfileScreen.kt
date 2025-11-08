@@ -59,9 +59,9 @@ import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.unit.dp
 import com.cs407.knot_client_android.R
+import android.graphics.RenderEffect
+import android.graphics.Shader  
 
 @Composable
 fun ProfileScreen(
@@ -153,22 +153,51 @@ fun ProfileScreen(
                     }
                 }
                 
-                Button(
-                    onClick = { /* TODO: 处理登出事件 */ },
-                    modifier = Modifier
-                        .scale(logoutScale.value),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.White.copy(alpha = 0.45f)
-                    ),
-                    shape = RoundedCornerShape(42.dp),
-                    interactionSource = logoutInteractionSource
+                // Logout 按钮容器 - 仿照 FloatingActionButton 的毛玻璃实现
+                Box(
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "Logout",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFF444444)
-                    )
+                    // 毛玻璃背景层 - Android 原生系统级模糊（固定大小，不放大）
+                    Box(
+                        modifier = Modifier
+                            .height(42.dp)
+                            .wrapContentWidth()
+                            .clip(RoundedCornerShape(42.dp))
+                            .graphicsLayer {
+                                renderEffect = RenderEffect
+                                    .createBlurEffect(40f, 40f, Shader.TileMode.CLAMP)
+                                    .asComposeRenderEffect()
+                            }
+                            .background(Color.White.copy(alpha = 0.65f))
+                    ) {
+                        // 占位内容，确保背景层大小与按钮一致
+                        Text(
+                            text = "Logout",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.Transparent,
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 9.dp)
+                        )
+                    }
+                    
+                    // 主按钮层 - 在毛玻璃背景之上，按中心放大
+                    Button(
+                        onClick = { /* TODO: 处理登出事件 */ },
+                        modifier = Modifier
+                            .scale(logoutScale.value),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White.copy(alpha = 0.3f)
+                        ),
+                        shape = RoundedCornerShape(42.dp),
+                        interactionSource = logoutInteractionSource
+                    ) {
+                        Text(
+                            text = "Logout",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF444444)
+                        )
+                    }
                 }
                 
                 // Edit 按钮 - 右对齐，带动画
@@ -202,23 +231,52 @@ fun ProfileScreen(
                         )
                     }
                 }
-                
-                Button(
-                    onClick = { /* TODO: 处理编辑事件 */ },
-                    modifier = Modifier
-                        .scale(editScale.value),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.White.copy(alpha = 0.45f)
-                    ),
-                    shape = RoundedCornerShape(42.dp),
-                    interactionSource = editInteractionSource
+
+                // Edit 按钮容器 - 仿照 FloatingActionButton 的毛玻璃实现
+                Box(
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "Edit",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFF444444)
-                    )
+                    // 毛玻璃背景层 - Android 原生系统级模糊（固定大小，不放大）
+                    Box(
+                        modifier = Modifier
+                            .height(42.dp)
+                            .wrapContentWidth()
+                            .clip(RoundedCornerShape(42.dp))
+                            .graphicsLayer {
+                                renderEffect = RenderEffect
+                                    .createBlurEffect(40f, 40f, Shader.TileMode.CLAMP)
+                                    .asComposeRenderEffect()
+                            }
+                            .background(Color.White.copy(alpha = 0.65f))
+                    ) {
+                        // 占位内容，确保背景层大小与按钮一致
+                        Text(
+                            text = "Edit",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.Transparent,
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 9.dp)
+                        )
+                    }
+                    
+                    // 主按钮层 - 在毛玻璃背景之上，按中心放大
+                    Button(
+                        onClick = { /* TODO: 处理编辑事件 */ },
+                        modifier = Modifier
+                            .scale(editScale.value),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White.copy(alpha = 0.3f)
+                        ),
+                        shape = RoundedCornerShape(42.dp),
+                        interactionSource = editInteractionSource
+                    ) {
+                        Text(
+                            text = "Edit",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF444444)
+                        )
+                    }
                 }
             }
 
