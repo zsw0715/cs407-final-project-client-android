@@ -131,18 +131,18 @@ fun ExpandableBottomSheet(
         }
         
         // 动态圆角：三段式变化
-        // 阶段1: 44.dp -> 60.dp
-        // 阶段2: 60.dp -> top: 42.dp, bottom: 0.dp （完全展开时）
+        // 阶段1: 44.dp -> 51.dp (半展开状态)
+        // 阶段2: 51.dp -> 42.dp (完全展开时)
         val currentCornerRadius = if (isPhase2) {
             val phase2Progress = ((animatedHeight.value - expandedHeight.value) / 
                                   (maxExpandedHeight.value - expandedHeight.value)).coerceIn(0f, 1f)
             if (phase2Progress < 0.5f) {
-                60.dp - 30.dp * phase2Progress
+                51.dp - 18.dp * phase2Progress
             } else {
-                42.dp + (60.dp - 42.dp) * (phase2Progress - 0.5f)
+                42.dp + (51.dp - 42.dp) * (phase2Progress - 0.5f)
             }
         } else {
-            44.dp + 16.dp * progress
+            44.dp + 7.dp * progress
         }
         
         // 毛玻璃背景层 - Android 原生系统级模糊
