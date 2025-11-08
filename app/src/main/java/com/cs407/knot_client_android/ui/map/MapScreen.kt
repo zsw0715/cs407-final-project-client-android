@@ -42,12 +42,14 @@ import com.cs407.knot_client_android.R
 import com.cs407.knot_client_android.data.api.MapboxGeocodingApi
 import com.cs407.knot_client_android.utils.LocationManager
 import com.mapbox.geojson.Point
+import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.MapInitOptions
 import com.mapbox.maps.Style
 import com.mapbox.maps.extension.compose.MapboxMap
 import com.mapbox.maps.extension.compose.animation.viewport.rememberMapViewportState
 import com.mapbox.maps.extension.compose.annotation.ViewAnnotation
 import com.mapbox.maps.extension.compose.style.MapStyle
+import com.mapbox.maps.plugin.animation.MapAnimationOptions
 import com.mapbox.maps.viewannotation.geometry
 import com.mapbox.maps.viewannotation.viewAnnotationOptions
 import kotlinx.coroutines.Job
@@ -96,11 +98,16 @@ fun MapScreen(
                 location?.let {
                     val point = Point.fromLngLat(it.longitude, it.latitude)
                     userLocation = point
-                    // 更新地图中心到用户位置
-                    mapViewportState.setCameraOptions {
-                        center(point)
-                        zoom(15.0)
-                    }
+                    // 平滑移动到用户位置
+                    mapViewportState.easeTo(
+                        cameraOptions = CameraOptions.Builder()
+                            .center(point)
+                            .zoom(15.0)
+                            .build(),
+                        animationOptions = MapAnimationOptions.mapAnimationOptions {
+                            duration(1500) // 1.5秒的平滑动画
+                        }
+                    )
                 }
             }
         }
@@ -130,10 +137,16 @@ fun MapScreen(
             location?.let {
                 val point = Point.fromLngLat(it.longitude, it.latitude)
                 userLocation = point
-                mapViewportState.setCameraOptions {
-                    center(point)
-                    zoom(15.0)
-                }
+                // 平滑移动到用户位置
+                mapViewportState.easeTo(
+                    cameraOptions = CameraOptions.Builder()
+                        .center(point)
+                        .zoom(15.0)
+                        .build(),
+                    animationOptions = MapAnimationOptions.mapAnimationOptions {
+                        duration(1500) // 1.5秒的平滑动画
+                    }
+                )
             }
         }
     }
