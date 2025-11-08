@@ -278,42 +278,42 @@ fun ProfileScreen(
                     UserInfoItem(
                         icon = Icons.Default.Person,
                         label = "Nickname",
-                        value = "fly"
+                        value = "Username"
                     )
                     
                     // Email
                     UserInfoItem(
                         icon = Icons.Default.Email,
                         label = "Email",
-                        value = "username.fly@wisc.edu"
+                        value = "username@wisc.edu"
                     )
                     
                     // Gender
                     UserInfoItem(
                         icon = Icons.Default.Face,
                         label = "Gender",
-                        value = "female"
+                        value = "FEMALE"
                     )
                     
                     // Birthday
                     UserInfoItem(
                         icon = Icons.Default.DateRange,
                         label = "Birthday",
-                        value = "not_set"
+                        value = "NOT_SET"
                     )
                     
                     // Privacy Level
                     UserInfoItem(
                         icon = Icons.Default.Lock,
                         label = "Privacy",
-                        value = "public"
+                        value = "PUBLIC"
                     )
                     
                     // Discoverable
                     UserInfoItem(
                         icon = Icons.Default.LocationOn,
                         label = "Discoverable",
-                        value = "PUBLIC"
+                        value = "TRUE"
                     )
                 }
             
