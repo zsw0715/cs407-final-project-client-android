@@ -25,6 +25,9 @@ fun MapScreen(
                 bearing(0.0)
             }
         },
+        compass = {
+            // 隐藏指南针
+        },
         logo = {
             // 隐藏 Mapbox logo
         },
