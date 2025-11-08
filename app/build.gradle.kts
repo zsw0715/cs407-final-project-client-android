@@ -56,6 +56,10 @@ dependencies {
     // Mapbox Compose Extension
     implementation("com.mapbox.extension:maps-compose:11.16.2")
     
+    // Retrofit for Mapbox Geocoding API
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    
     // Google Play Services Location
     implementation("com.google.android.gms:play-services-location:21.3.0")
     // Coroutines support for Play Services
