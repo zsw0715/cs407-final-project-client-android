@@ -25,12 +25,21 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import com.cs407.knot_client_android.navigation.Screen
 import com.cs407.knot_client_android.ui.friend.FriendScreen
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.LaunchedEffect
+
 
 @Composable
 fun MainScreen(
     navController: NavHostController,
     initialTab: String = "MAP"
 ) {
+    val mainVm = viewModel<MainViewModel>()
+
+    LaunchedEffect(Unit) {
+        mainVm.connectIfNeeded()   // 进入主界面即自动 AUTH + 心跳
+    }
+
     var selectedTab by remember { 
         mutableStateOf(
             when (initialTab) {

@@ -37,6 +37,10 @@ import com.cs407.knot_client_android.ui.components.LoginToggle
 fun LoginScreen(
     navController: NavHostController
 ) {
+    val vm = androidx.lifecycle.viewmodel.compose.viewModel<LoginViewModel>()
+    val loading by vm.loading.collectAsState()
+    val error by vm.error.collectAsState()
+
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var isLogin by remember { mutableStateOf(true) } // true = Login, false = Register
@@ -334,14 +338,23 @@ fun LoginScreen(
             
             Button(
                 onClick = { 
-                    if (isLogin) {
-                        // TODO: Login logic
-                        navController.navigate(Screen.Main.createRoute())
-                    } else {
-                        // TODO: Register logic
+//                    if (isLogin) {
+//                        // TODO: Login logic
+//                        navController.navigate(Screen.Main.createRoute())
+//                    } else {
+//                        // TODO: Register logic
+//                        navController.navigate(Screen.Main.createRoute())
+//                    }
+                    vm.submit(
+                        isLogin = isLogin,
+                        username = username.trim(),
+                        password = password,
+                    ) {
+                        // 登录/注册成功 → 跳转主页面
                         navController.navigate(Screen.Main.createRoute())
                     }
                 },
+                enabled = !loading,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp)

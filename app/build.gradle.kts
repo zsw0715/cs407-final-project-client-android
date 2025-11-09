@@ -68,6 +68,12 @@ dependencies {
     // Coroutines support for Play Services
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
     implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.navigation.runtime.ktx)
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

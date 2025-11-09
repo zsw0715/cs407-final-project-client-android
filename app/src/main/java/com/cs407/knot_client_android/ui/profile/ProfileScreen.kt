@@ -62,12 +62,22 @@ import androidx.compose.ui.layout.ContentScale
 import com.cs407.knot_client_android.R
 import com.cs407.knot_client_android.navigation.Screen
 import android.graphics.RenderEffect
-import android.graphics.Shader  
+import android.graphics.Shader
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+
 
 @Composable
 fun ProfileScreen(
     navController: NavHostController
 ) {
+    // 为了发 WS、断开 & 清 JWT
+    val mainVm = viewModel<com.cs407.knot_client_android.ui.main.MainViewModel>()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val tokenStore = remember { com.cs407.knot_client_android.data.local.TokenStore(context) }
+    val scope = rememberCoroutineScope()
+
     // Profile 页面内容 - 不再包含导航栏
     Box(
         modifier = Modifier
@@ -183,9 +193,23 @@ fun ProfileScreen(
                     
                     // 主按钮层 - 在毛玻璃背景之上，按中心放大
                     Button(
-                        onClick = { 
-                            // 暂时跳转至登录页面
-                            navController.navigate(Screen.Login.route)
+                        onClick = {
+                            scope.launch {
+                                // 1) 通过 WS 通知后端注销（如果已连接）
+                                mainVm.send("""{"type":"LOGOUT"}""")
+
+                                // 2) 清理本地认证态
+                                tokenStore.clear()
+
+                                // 3) 断开 WebSocket（后端也会关闭，我们这边主动断开更干净）
+                                mainVm.wsManager.disconnect()
+
+                                // 4) 导航回登录页，并清空返回栈，避免 Back 返回到主界面
+                                navController.navigate(Screen.Login.route) {
+                                    popUpTo(Screen.Main.route) { inclusive = true }
+                                    launchSingleTop = true
+                                }
+                            }
                          },
                         modifier = Modifier
                             .scale(logoutScale.value),
