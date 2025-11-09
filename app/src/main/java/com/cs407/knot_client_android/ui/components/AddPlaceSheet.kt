@@ -75,6 +75,7 @@ fun AddPlaceSheet(
                         stiffness = Spring.StiffnessLow
                     )
                 )
+                // 动画结束后通知外部关闭
                 onDismiss()
             } else {
                 // 回弹到原位
@@ -86,6 +87,14 @@ fun AddPlaceSheet(
                     )
                 )
             }
+        }
+    }
+    
+    // 监听动画高度，当接近 0 时自动同步状态
+    LaunchedEffect(animatedHeight.value) {
+        // 如果高度已经很小（< 5dp），认为已关闭，同步状态
+        if (animatedHeight.value < 5f && isVisible) {
+            onDismiss()
         }
     }
     
