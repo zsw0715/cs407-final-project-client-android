@@ -54,7 +54,7 @@ fun ExpandableBottomSheet(
     // 三个高度状态：收起、半展开、全展开
     val collapsedHeight = 70.dp
     val expandedHeight = screenHeight * 0.5f  // 半展开：50%
-    val maxExpandedHeight = screenHeight * 0.93f  // 全展开：93%
+    val maxExpandedHeight = screenHeight * 0.94f  // 全展开：94%
     
     // 动画状态
     val animatedHeight = remember { Animatable(collapsedHeight.value) }
@@ -108,7 +108,7 @@ fun ExpandableBottomSheet(
             animatedHeight.animateTo(
                 targetValue = target,
                 animationSpec = spring(
-                    dampingRatio = 0.75f,
+                    dampingRatio = 0.70f,
                     stiffness = 120f
                 )
             )
@@ -224,6 +224,8 @@ fun ExpandableBottomSheet(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
+                        // .background(Color(0xFFF8F6F4).copy(alpha = blurAlpha))
+                        .clip(RoundedCornerShape(currentCornerRadius))
                         .alpha(progress)
                         .clickable (
                             enabled = true,

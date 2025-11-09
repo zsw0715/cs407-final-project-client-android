@@ -91,7 +91,7 @@ fun BottomNavigationBar(
                     NavTab.FRIEND -> buttonWidth + 4.dp
                 },
                 animationSpec = spring(
-                    dampingRatio = 0.6f, // 对应 cubic-bezier(0.34, 1.56, 0.64, 1)
+                    dampingRatio = 0.70f,
                     stiffness = 200f
                 ),
                 label = "slider offset"
