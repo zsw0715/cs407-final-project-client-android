@@ -80,6 +80,14 @@ import com.mapbox.maps.extension.compose.MapboxMap
 import com.mapbox.maps.extension.compose.animation.viewport.rememberMapViewportState
 import com.mapbox.maps.extension.compose.annotation.ViewAnnotation
 import com.mapbox.maps.extension.compose.style.MapStyle
+import com.mapbox.maps.extension.compose.annotation.generated.PointAnnotationGroup
+import com.mapbox.maps.plugin.annotation.AnnotationConfig
+import com.mapbox.maps.plugin.annotation.AnnotationSourceOptions
+import com.mapbox.maps.plugin.annotation.ClusterOptions
+import com.mapbox.maps.plugin.annotation.generated.PointAnnotationOptions
+import com.mapbox.maps.extension.style.expressions.dsl.generated.literal
+import com.mapbox.maps.extension.style.expressions.generated.Expression
+import android.graphics.Color as AndroidColor
 import com.mapbox.maps.plugin.animation.MapAnimationOptions
 import com.mapbox.maps.viewannotation.geometry
 import com.mapbox.maps.viewannotation.viewAnnotationOptions
@@ -259,6 +267,9 @@ fun MapScreen(
         )
     }
     
+    // 跟踪当前的 zoom 级别（用于控制 cluster/detail 切换）
+    var currentZoom by remember { mutableStateOf(7.0) }
+    
     // 创建 Geocoding API (用于反向地理编码)
     val mapboxToken = context.getString(R.string.mapbox_access_token)
     val geocodingApi = remember { GeocodingApiService.create() }
@@ -289,9 +300,7 @@ fun MapScreen(
         mockMapPosts.forEach { post ->
             kotlinx.coroutines.delay(80L) // 每个 marker 间隔 80ms
             visibleMarkerIds = visibleMarkerIds + post.mapPostId
-            println("🎯 Marker ${post.mapPostId} - ${post.title} added to visible list. Total: ${visibleMarkerIds.size}")
         }
-        println("✅ All ${mockMapPosts.size} markers loaded!")
     }
     
     // 权限请求启动器
@@ -364,6 +373,9 @@ fun MapScreen(
         val zoom = mapViewportState.cameraState?.zoom ?: return@LaunchedEffect
         val center = mapViewportState.cameraState?.center ?: return@LaunchedEffect
         
+        // 更新当前 zoom 级别（用于控制 cluster/detail 显示）
+        currentZoom = zoom
+        
         // 取消之前的请求（节流）
         geocodingJob?.cancel()
         
@@ -412,7 +424,7 @@ fun MapScreen(
     // ⚡ 直接显示地图，无动画
     // 地图会在 MainScreen 加载时就开始初始化
     Box(modifier = Modifier.fillMaxSize()) {
-        // 地图内容 - 使用 MapStyle
+        // 地图内容 - 使用 MapStyle + PointAnnotationGroup Clustering
         MapboxMap(
             modifier = Modifier.fillMaxSize(),
             mapViewportState = mapViewportState,
@@ -498,8 +510,38 @@ fun MapScreen(
                 }
             }
             
-            // 显示地图帖子 Markers - 每个 marker 依次弹出，带丝滑动画
-            if (showMarkers) {
+            // Mapbox 原生 Clustering：zoom ≤ 13 时显示蓝色聚合圆圈
+            if (showMarkers && currentZoom <= 13.0) {
+                PointAnnotationGroup(
+                    annotations = mockMapPosts.map { post ->
+                        PointAnnotationOptions()
+                            .withPoint(Point.fromLngLat(post.locLng, post.locLat))
+                    },
+                    annotationConfig = AnnotationConfig(
+                        annotationSourceOptions = AnnotationSourceOptions(
+                            clusterOptions = ClusterOptions(
+                                // Cluster 圆圈颜色：统一蓝色
+                                colorLevels = listOf(
+                                    Pair(0, AndroidColor.rgb(76, 144, 226))  // 蓝色
+                                ),
+                                // Cluster 文字颜色
+                                textColorExpression = Expression.color(AndroidColor.WHITE),
+                                // Cluster 文字大小
+                                textSize = 14.0,
+                                // Cluster 圆圈半径
+                                circleRadiusExpression = literal(25.0),
+                                // 聚合半径
+                                clusterRadius = 50L,
+                                // 最大聚合的 zoom 级别（13 以下都会 cluster）
+                                clusterMaxZoom = 13L
+                            )
+                        )
+                    )
+                )
+            }
+            
+            // ViewAnnotation 详细卡片：zoom > 13 时显示
+            if (showMarkers && currentZoom > 13.0) {
                 mockMapPosts.forEach { post ->
                     // 只渲染已经设置为可见的 markers
                     if (visibleMarkerIds.contains(post.mapPostId)) {
@@ -741,20 +783,20 @@ fun MapScreen(
             }
         }
         
-        // DEBUG: 显示 marker 加载状态 DO NOT DELETE THIS CODE
-        // Text(
-        //     text = "Markers: ${visibleMarkerIds.size}/${mockMapPosts.size}",
-        //     modifier = Modifier
-        //         .align(Alignment.BottomStart)
-        //         .padding(16.dp)
-        //         .background(
-        //             color = Color.White.copy(alpha = 0.9f),
-        //             shape = RoundedCornerShape(8.dp)
-        //         )
-        //         .padding(horizontal = 12.dp, vertical = 6.dp),
-        //     color = Color.Black,
-        //     fontSize = 12.sp
-        // )
+        // DEBUG: 显示 zoom 级别和 marker 模式 DO NOT DELETE THIS CODE
+        Text(
+            text = "Zoom: ${"%.1f".format(currentZoom)} | ${if (currentZoom > 13.0) "Details" else "Clusters"}",
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(16.dp)
+                .background(
+                    color = Color.White.copy(alpha = 0.9f),
+                    shape = RoundedCornerShape(8.dp)
+                )
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            color = Color.Black,
+            fontSize = 12.sp
+        )
         
         // DEBUG: DO NOT DELETE THIS CODE
         // // 显示当前位置信息（调试用）- 白色半透明背景
