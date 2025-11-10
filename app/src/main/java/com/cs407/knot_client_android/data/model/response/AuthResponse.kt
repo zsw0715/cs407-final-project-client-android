@@ -22,6 +22,11 @@ data class TokenData(
 )
 
 /**
+ * 刷新 Token 响应（与登录响应结构相同）
+ */
+typealias RefreshTokenResponse = LoginResponse
+
+/**
  * 通用响应（注册等）
  */
 data class CommonResponse(

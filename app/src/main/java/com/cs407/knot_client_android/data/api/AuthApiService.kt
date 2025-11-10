@@ -2,8 +2,10 @@ package com.cs407.knot_client_android.data.api
 
 import com.cs407.knot_client_android.data.model.request.LoginRequest
 import com.cs407.knot_client_android.data.model.request.RegisterRequest
+import com.cs407.knot_client_android.data.model.request.RefreshTokenRequest
 import com.cs407.knot_client_android.data.model.response.CommonResponse
 import com.cs407.knot_client_android.data.model.response.LoginResponse
+import com.cs407.knot_client_android.data.model.response.RefreshTokenResponse
 import retrofit2.http.Body
 import retrofit2.http.POST
 
@@ -22,5 +24,11 @@ interface AuthApiService {
      */
     @POST("/api/auth/register")
     suspend fun register(@Body request: RegisterRequest): CommonResponse
+
+    /**
+     * 刷新 Token
+     */
+    @POST("/api/auth/refresh")
+    suspend fun refreshToken(@Body request: RefreshTokenRequest): RefreshTokenResponse
 }
 
