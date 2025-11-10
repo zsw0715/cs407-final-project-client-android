@@ -11,6 +11,7 @@ import com.cs407.knot_client_android.ui.login.LoginScreen
 import com.cs407.knot_client_android.ui.main.MainScreen
 import com.cs407.knot_client_android.ui.friend.FriendScreen
 import com.cs407.knot_client_android.ui.debug.DebugScreen
+import com.cs407.knot_client_android.ui.profile.ProfileEditScreen
 
 sealed class Screen(val route: String) {
     object Login : Screen("login")
@@ -19,6 +20,7 @@ sealed class Screen(val route: String) {
     }
     object Friend : Screen("friend")
     object Debug : Screen("debug")
+    object ProfileEdit : Screen("profile_edit")
 }
 
 // 主要的 Navigation 设置函数
@@ -53,6 +55,9 @@ fun SetupNavGraph(
         }
         composable(route = Screen.Debug.route) {
             DebugScreen(navController = navController)
+        }
+        composable(route = Screen.ProfileEdit.route) {
+            ProfileEditScreen(navController = navController)
         }
     }
 }

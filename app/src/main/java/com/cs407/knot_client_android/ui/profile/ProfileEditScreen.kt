@@ -72,16 +72,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 
-
 @Composable
-fun ProfileScreen(
+fun ProfileEditScreen(
     navController: NavHostController
 ) {
-    // 为了发 WS、断开 & 清 JWT
-    val mainVm = viewModel<com.cs407.knot_client_android.ui.main.MainViewModel>()
     val profileVm = viewModel<ProfileViewModel>()
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val tokenStore = remember { com.cs407.knot_client_android.data.local.TokenStore(context) }
     val scope = rememberCoroutineScope()
     
     // 收集用户设置数据
@@ -152,21 +147,21 @@ fun ProfileScreen(
         ) {
             Spacer(modifier = Modifier.height(50.dp))
             
-            // 按钮行 - Logout 左对齐，Edit 右对齐
+            // 按钮行 - BACK 左对齐，SAVE 右对齐
             Row(
                 modifier = Modifier
                     .fillMaxWidth(0.90f)
                     .padding(horizontal = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Logout 按钮 - 左对齐，带动画
-                val logoutInteractionSource = remember { MutableInteractionSource() }
-                val logoutIsPressed by logoutInteractionSource.collectIsPressedAsState()
-                val logoutScale = remember { Animatable(1f) }
+                // BACK 按钮 - 左对齐，带动画
+                val backInteractionSource = remember { MutableInteractionSource() }
+                val backIsPressed by backInteractionSource.collectIsPressedAsState()
+                val backScale = remember { Animatable(1f) }
                 
-                LaunchedEffect(logoutIsPressed) {
-                    if (logoutIsPressed) {
-                        logoutScale.animateTo(
+                LaunchedEffect(backIsPressed) {
+                    if (backIsPressed) {
+                        backScale.animateTo(
                             targetValue = 1.2f,
                             animationSpec = tween(
                                 durationMillis = 170,
@@ -174,14 +169,14 @@ fun ProfileScreen(
                             )
                         )
                     } else {
-                        logoutScale.animateTo(
+                        backScale.animateTo(
                             targetValue = 0.88f,
                             animationSpec = tween(
                                 durationMillis = 155,
                                 easing = FastOutLinearInEasing
                             )
                         )
-                        logoutScale.animateTo(
+                        backScale.animateTo(
                             targetValue = 1f,
                             animationSpec = spring(
                                 dampingRatio = Spring.DampingRatioMediumBouncy,
@@ -191,7 +186,7 @@ fun ProfileScreen(
                     }
                 }
                 
-                // Logout 按钮容器 - 仿照 FloatingActionButton 的毛玻璃实现
+                // BACK 返回 Profile 页面按钮容器 - 仿照 FloatingActionButton 的毛玻璃实现
                 Box(
                     contentAlignment = Alignment.Center
                 ) {
@@ -210,103 +205,7 @@ fun ProfileScreen(
                     ) {
                         // 占位内容，确保背景层大小与按钮一致
                         Text(
-                            text = "Logout",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color.Transparent,
-                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 9.dp)
-                        )
-                    }
-                    
-                    // 主按钮层 - 在毛玻璃背景之上，按中心放大
-                    Button(
-                        onClick = {
-                            scope.launch {
-                                // 1) 通过 WS 通知后端注销（如果已连接）
-                                mainVm.send("""{"type":"LOGOUT"}""")
-
-                                // 2) 清理本地认证态
-                                tokenStore.clear()
-
-                                // 3) 断开 WebSocket（后端也会关闭，我们这边主动断开更干净）
-                                mainVm.wsManager.disconnect()
-
-                                // 4) 导航回登录页，并清空返回栈，避免 Back 返回到主界面
-                                navController.navigate(Screen.Login.route) {
-                                    popUpTo(Screen.Main.route) { inclusive = true }
-                                    launchSingleTop = true
-                                }
-                            }
-                         },
-                        modifier = Modifier
-                            .scale(logoutScale.value),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.White.copy(alpha = 0.3f)
-                        ),
-                        shape = RoundedCornerShape(42.dp),
-                        interactionSource = logoutInteractionSource
-                    ) {
-                        Text(
-                            text = "Logout",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color(0xFF444444)
-                        )
-                    }
-                }
-                
-                // Edit 按钮 - 右对齐，带动画
-                val editInteractionSource = remember { MutableInteractionSource() }
-                val editIsPressed by editInteractionSource.collectIsPressedAsState()
-                val editScale = remember { Animatable(1f) }
-                
-                LaunchedEffect(editIsPressed) {
-                    if (editIsPressed) {
-                        editScale.animateTo(
-                            targetValue = 1.2f,
-                            animationSpec = tween(
-                                durationMillis = 170,
-                                easing = LinearOutSlowInEasing
-                            )
-                        )
-                    } else {
-                        editScale.animateTo(
-                            targetValue = 0.88f,
-                            animationSpec = tween(
-                                durationMillis = 155,
-                                easing = FastOutLinearInEasing
-                            )
-                        )
-                        editScale.animateTo(
-                            targetValue = 1f,
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                stiffness = Spring.StiffnessLow
-                            )
-                        )
-                    }
-                }
-
-                // Edit 按钮容器 - 仿照 FloatingActionButton 的毛玻璃实现
-                Box(
-                    contentAlignment = Alignment.Center
-                ) {
-                    // 毛玻璃背景层 - Android 原生系统级模糊（固定大小，不放大）
-                    Box(
-                        modifier = Modifier
-                            .height(42.dp)
-                            .wrapContentWidth()
-                            .clip(RoundedCornerShape(42.dp))
-                            .graphicsLayer {
-                                renderEffect = RenderEffect
-                                    .createBlurEffect(40f, 40f, Shader.TileMode.CLAMP)
-                                    .asComposeRenderEffect()
-                            }
-                            .background(Color.White.copy(alpha = 0.65f))
-                    ) {
-                        // 占位内容，确保背景层大小与按钮一致
-                        Text(
-                            text = "Edit",
+                            text = "BACK",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
                             color = Color.Transparent,
@@ -317,20 +216,105 @@ fun ProfileScreen(
                     // 主按钮层 - 在毛玻璃背景之上，按中心放大
                     Button(
                         onClick = { 
-                            navController.navigate(Screen.ProfileEdit.route) {
-                                popUpTo(Screen.ProfileEdit.route) { inclusive = true }
+                            navController.navigate(Screen.Main.createRoute("PROFILE")) {
+                                popUpTo(Screen.Main.createRoute("PROFILE")) { inclusive = true }
                             }
                         },
                         modifier = Modifier
-                            .scale(editScale.value),
+                            .scale(backScale.value),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color.White.copy(alpha = 0.3f)
                         ),
                         shape = RoundedCornerShape(42.dp),
-                        interactionSource = editInteractionSource
+                        interactionSource = backInteractionSource
                     ) {
                         Text(
-                            text = "Edit",
+                            text = "BACK",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF444444)
+                        )
+                    }
+                }
+                
+                // SAVE 按钮 - 右对齐，带动画
+                val saveInteractionSource = remember { MutableInteractionSource() }
+                val saveIsPressed by saveInteractionSource.collectIsPressedAsState()
+                val saveScale = remember { Animatable(1f) }
+                
+                LaunchedEffect(saveIsPressed) {
+                    if (saveIsPressed) {
+                        saveScale.animateTo(
+                            targetValue = 1.2f,
+                            animationSpec = tween(
+                                durationMillis = 170,
+                                easing = LinearOutSlowInEasing
+                            )
+                        )
+                    } else {
+                        saveScale.animateTo(
+                            targetValue = 0.88f,
+                            animationSpec = tween(
+                                durationMillis = 155,
+                                easing = FastOutLinearInEasing
+                            )
+                        )
+                        saveScale.animateTo(
+                            targetValue = 1f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessLow
+                            )
+                        )
+                    }
+                }
+
+                // SAVE 按钮容器 - 仿照 FloatingActionButton 的毛玻璃实现
+                Box(
+                    contentAlignment = Alignment.Center
+                ) {
+                    // 毛玻璃背景层 - Android 原生系统级模糊（固定大小，不放大）
+                    Box(
+                        modifier = Modifier
+                            .height(42.dp)
+                            .wrapContentWidth()
+                            .clip(RoundedCornerShape(42.dp))
+                            .graphicsLayer {
+                                renderEffect = RenderEffect
+                                    .createBlurEffect(40f, 40f, Shader.TileMode.CLAMP)
+                                    .asComposeRenderEffect()
+                            }
+                            .background(Color.White.copy(alpha = 0.65f))
+                    ) {
+                        // 占位内容，确保背景层大小与按钮一致
+                        Text(
+                            text = "SAVE",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.Transparent,
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 9.dp)
+                        )
+                    }
+                    
+                    // 主按钮层 - 在毛玻璃背景之上，按中心放大
+                    Button(
+                        onClick = { 
+                            // TODO: 处理保存事件
+
+                            navController.navigate(Screen.Main.createRoute("PROFILE")) {
+                                popUpTo(Screen.Main.createRoute("PROFILE")) { inclusive = true }
+                            }
+                        },
+                        modifier = Modifier
+                            .scale(saveScale.value),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White.copy(alpha = 0.3f)
+                        ),
+                        shape = RoundedCornerShape(42.dp),
+                        interactionSource = saveInteractionSource
+                    ) {
+                        Text(
+                            text = "SAVE",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
                             color = Color(0xFF444444)
@@ -365,7 +349,7 @@ fun ProfileScreen(
 
             // 🧾 名称
             Text(
-                text = userSettings?.nickname ?: "N/A",
+                text = userSettings?.nickname ?: "Loading...",
                 fontSize = 30.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF2D2D33)
@@ -391,47 +375,7 @@ fun ProfileScreen(
                 Column(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Nickname
-                    UserInfoItem(
-                        icon = Icons.Default.Person,
-                        label = "Nickname",
-                        value = userSettings?.nickname ?: "N/A"
-                    )
-                    
-                    // Email
-                    UserInfoItem(
-                        icon = Icons.Default.Email,
-                        label = "Email",
-                        value = userSettings?.email ?: "N/A"
-                    )
-                    
-                    // Gender
-                    UserInfoItem(
-                        icon = Icons.Default.Face,
-                        label = "Gender",
-                        value = userSettings?.gender ?: "N/A"
-                    )
-                    
-                    // Birthday
-                    UserInfoItem(
-                        icon = Icons.Default.DateRange,
-                        label = "Birthday",
-                        value = userSettings?.birthdate ?: "N/A"
-                    )
-                    
-                    // Privacy Level
-                    UserInfoItem(
-                        icon = Icons.Default.Lock,
-                        label = "Privacy",
-                        value = userSettings?.privacyLevel ?: "N/A"
-                    )
-                    
-                    // Discoverable
-                    UserInfoItem(
-                        icon = Icons.Default.LocationOn,
-                        label = "Discoverable",
-                        value = if (userSettings?.discoverable == true) "TRUE" else "FALSE"
-                    )
+                    Text(text = "This is a Profile Edit page", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Color(0xFF444444))
                 }
             
             }
@@ -455,50 +399,9 @@ fun ProfileScreen(
     }
 }
 
-@Composable
-private fun UserInfoItem(
-    icon: ImageVector,
-    label: String,
-    value: String
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // 图标
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = Color(0xFF8E8E93), // 可见的灰色
-            modifier = Modifier.size(28.dp) // 增大图标
-        )
-        
-        Spacer(modifier = Modifier.width(16.dp))
-        
-        // 标签
-        Text(
-            text = label,
-            fontSize = 18.sp, // 增大字体
-            fontWeight = FontWeight.Medium,
-            color = Color(0xFF505058), // 可见的深灰色
-            modifier = Modifier.weight(1f)
-        )
-        
-        // 值
-        Text(
-            text = value,
-            fontSize = 16.sp, // 增大字体
-            fontWeight = FontWeight.Normal,
-            color = Color(0xFF7B7D86) // 可见的灰色
-        )
-    }
-}
-
 @Preview(showBackground = true)
 @Composable
-fun ProfileScreenPreview() {
-    ProfileScreen(navController = rememberNavController())
+fun ProfileEditScreenPreview() {
+    ProfileEditScreen(navController = rememberNavController())
 }
 
