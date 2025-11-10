@@ -320,6 +320,8 @@ fun MapScreen(
                         cameraOptions = CameraOptions.Builder()
                             .center(point)
                             .zoom(15.0)
+                            .bearing(0.0)  // 旋转到正北方向
+                            .pitch(0.0)    // 重置倾斜角度
                             .build(),
                         animationOptions = MapAnimationOptions.mapAnimationOptions {
                             duration(1500) // 1.5秒的平滑动画
@@ -359,6 +361,8 @@ fun MapScreen(
                     cameraOptions = CameraOptions.Builder()
                         .center(point)
                         .zoom(15.0)
+                        .bearing(0.0)  // 旋转到正北方向
+                        .pitch(0.0)    // 重置倾斜角度
                         .build(),
                     animationOptions = MapAnimationOptions.mapAnimationOptions {
                         duration(1500) // 1.5秒的平滑动画
@@ -537,7 +541,46 @@ fun MapScreen(
                             )
                         )
                     )
-                )
+                ) {
+                    // 点击 cluster 时，放大到 zoom 13.5 并移动到 cluster 位置
+                    // interactionsState.onClusterClicked { cluster ->
+                    //     scope.launch {
+                    //         // 从 annotatedFeature 获取几何信息
+                    //         val geometry = cluster.annotatedFeature.feature.geometry()
+                    //         if (geometry is Point) {
+                    //             mapViewportState.easeTo(
+                    //                 cameraOptions = CameraOptions.Builder()
+                    //                     .center(geometry)  // 移动到 cluster 中心
+                    //                     .zoom(13.5)  // 放大到 13.5，刚好能看到详细卡片
+                    //                     .build(),
+                    //                 animationOptions = MapAnimationOptions.mapAnimationOptions {
+                    //                     duration(800)  // 800ms 的平滑动画
+                    //                 }
+                    //             )
+                    //         }
+                    //     }
+                    //     true  // 消费事件
+                    // }
+                    interactionsState.onClusterClicked { cluster ->
+                        // 拿到聚类点的中心坐标
+                        val point = cluster.originalFeature.geometry() as? com.mapbox.geojson.Point
+                        if (point != null) {
+                            // 放大到能分裂的一个经验 zoom（13.5~14.5 之间看你的数据分布）
+                            mapViewportState.easeTo(
+                                cameraOptions = CameraOptions.Builder()
+                                    .center(point)
+                                    .zoom(13.8) // 你原来用 13.5 也行
+                                    .bearing(0.0)  // 旋转到正北方向
+                                    .pitch(0.0)    // 重置倾斜角度
+                                    .build(),
+                                animationOptions = MapAnimationOptions.mapAnimationOptions {
+                                    duration(1800)
+                                }
+                            )
+                        }
+                        true // 消费点击
+                    }
+                }
             }
             
             // ViewAnnotation 详细卡片：zoom > 13 时显示
@@ -755,6 +798,8 @@ fun MapScreen(
                                             cameraOptions = CameraOptions.Builder()
                                                 .center(location)
                                                 .zoom(15.0)
+                                                .bearing(0.0)  // 旋转到正北方向
+                                                .pitch(0.0)    // 重置倾斜角度
                                                 .build(),
                                             animationOptions = MapAnimationOptions.mapAnimationOptions {
                                                 duration(2500) // 2.5秒的平滑动画
