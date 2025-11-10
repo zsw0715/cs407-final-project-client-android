@@ -14,27 +14,6 @@ class LoginViewModel(app: Application) : AndroidViewModel(app) {
 
     val loading = MutableStateFlow(false)
     val error = MutableStateFlow<String?>(null)
-    val autoLoginSuccess = MutableStateFlow(false) // 自动登录成功状态
-
-    /**
-     * 尝试自动登录
-     * 在 LoginScreen 显示时调用
-     */
-    fun tryAutoLogin() {
-        viewModelScope.launch {
-            loading.value = true
-            error.value = null
-            try {
-                val success = repo.tryAutoLogin()
-                autoLoginSuccess.value = success
-            } catch (e: Exception) {
-                e.printStackTrace()
-                autoLoginSuccess.value = false
-            } finally {
-                loading.value = false
-            }
-        }
-    }
 
     fun submit(isLogin: Boolean, username: String, password: String, onSuccess: () -> Unit) {
         viewModelScope.launch {

@@ -40,7 +40,6 @@ fun LoginScreen(
     val vm = androidx.lifecycle.viewmodel.compose.viewModel<LoginViewModel>()
     val loading by vm.loading.collectAsState()
     val error by vm.error.collectAsState()
-    val autoLoginSuccess by vm.autoLoginSuccess.collectAsState()
 
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -152,21 +151,6 @@ fun LoginScreen(
     // 启动动画
     LaunchedEffect(Unit) {
         animationStarted = true
-    }
-    
-    // 🚀 自动登录：页面加载时尝试恢复登录状态
-    LaunchedEffect(Unit) {
-        vm.tryAutoLogin()
-    }
-    
-    // 🎯 自动登录成功后跳转到主页面
-    LaunchedEffect(autoLoginSuccess) {
-        if (autoLoginSuccess) {
-            navController.navigate(Screen.Main.createRoute("MAP")) {
-                popUpTo(Screen.Login.route) { inclusive = true }
-                launchSingleTop = true
-            }
-        }
     }
     
     // 背景渐变 - 从上到下增加温度感
