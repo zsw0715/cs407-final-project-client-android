@@ -70,8 +70,14 @@ import com.cs407.knot_client_android.data.api.GeocodingApiService
 import com.cs407.knot_client_android.data.local.MapPreferences
 import com.cs407.knot_client_android.data.model.MapPost
 import com.cs407.knot_client_android.data.model.PostType
+import com.cs407.knot_client_android.data.model.response.MapPostNearby
+import com.cs407.knot_client_android.data.repository.MapPostRepository
 import com.cs407.knot_client_android.ui.components.MapMarker
 import com.cs407.knot_client_android.utils.LocationManager
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.CircularProgressIndicator
 import com.mapbox.geojson.Point
 import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.MapInitOptions
@@ -104,6 +110,11 @@ fun MapScreen(
     val mapPreferences = remember { MapPreferences(context) }
     val scope = rememberCoroutineScope()
     
+    // API Repository
+    val mapPostRepository = remember { 
+        MapPostRepository(context, "http://10.0.2.2:8080") 
+    }
+    
     // ⚡ 静态标志：地图直接显示，无动画
     // 因为地图会在 MainScreen 加载时就开始初始化
     // 当用户看到时，地图已经准备好了
@@ -112,160 +123,166 @@ fun MapScreen(
     // 为每个 marker 单独管理显示状态，用于动画（使用 Set 来追踪已显示的 marker）
     var visibleMarkerIds by remember { mutableStateOf(setOf<Long>()) }
     
+    // 地图帖子数据状态
+    var mapPosts by remember { mutableStateOf<List<MapPostNearby>>(emptyList()) }
+    var isLoadingPosts by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    
     // 位置状态
     var userLocation by remember { mutableStateOf<Point?>(null) }
     var hasPermission by remember { mutableStateOf(locationManager.hasLocationPermission()) }
     var centerLocationName by remember { mutableStateOf<String?>(null) }
     
-    // 假数据：多个地图帖子（在 Mountain View 区域）
-    val mockMapPosts = remember {
-        listOf(
-            MapPost(
-                mapPostId = 1,
-                convId = 101,
-                creatorId = 1001,
-                title = "Best Coffee ☕",
-                description = "Amazing latte art and cozy atmosphere!",
-                mediaJson = listOf("url1", "url2"),
-                locLat = 37.422,
-                locLng = -122.084,
-                locName = "Google Play Store",
-                geohash = "9q9hvnf",
-                viewCount = 156,
-                likeCount = 42,
-                commentCount = 8,
-                status = 1,
-                createdAt = "2024-11-09T10:30:00Z",
-                postType = PostType.ALL
-            ),
-            MapPost(
-                mapPostId = 2,
-                convId = 102,
-                creatorId = 1002,
-                title = "Tech Meetup 🚀",
-                description = "Weekly tech talks and networking",
-                mediaJson = null,
-                locLat = 37.425,
-                locLng = -122.088,
-                locName = "Mountain View Library",
-                geohash = "9q9hvng",
-                viewCount = 89,
-                likeCount = 27,
-                commentCount = 15,
-                status = 1,
-                createdAt = "2024-11-09T14:15:00Z",
-                postType = PostType.REQUEST
-            ),
-            MapPost(
-                mapPostId = 3,
-                convId = 103,
-                creatorId = 1003,
-                title = "Yoga Class 🧘",
-                description = "Morning yoga sessions every weekend",
-                mediaJson = listOf("url3"),
-                locLat = 37.427,
-                locLng = -122.086,
-                locName = "Shoreline Park",
-                geohash = "9q9hvnh",
-                viewCount = 234,
-                likeCount = 68,
-                commentCount = 22,
-                status = 1,
-                createdAt = "2024-11-09T08:00:00Z",
-                postType = PostType.ALL
-            ),
-            MapPost(
-                mapPostId = 4,
-                convId = 104,
-                creatorId = 1004,
-                title = "Food Truck 🌮",
-                description = "Best tacos in town!",
-                mediaJson = null,
-                locLat = 37.423,
-                locLng = -122.090,
-                locName = "Castro Street",
-                geohash = "9q9hvne",
-                viewCount = 312,
-                likeCount = 95,
-                commentCount = 41,
-                status = 1,
-                createdAt = "2024-11-09T12:00:00Z",
-                postType = PostType.ALL
-            ),
-            MapPost(
-                mapPostId = 5,
-                convId = 105,
-                creatorId = 1005,
-                title = "Book Club 📚",
-                description = "Monthly book discussions",
-                mediaJson = listOf("url4", "url5"),
-                locLat = 37.420,
-                locLng = -122.082,
-                locName = "Public Library",
-                geohash = "9q9hvnc",
-                viewCount = 145,
-                likeCount = 38,
-                commentCount = 19,
-                status = 1,
-                createdAt = "2024-11-09T16:30:00Z",
-                postType = PostType.REQUEST
-            ),
-            MapPost(
-                mapPostId = 6,
-                convId = 106,
-                creatorId = 1006,
-                title = "Art Gallery 🎨",
-                description = "Local artists exhibition",
-                mediaJson = null,
-                locLat = 37.428,
-                locLng = -122.089,
-                locName = "Art Center",
-                geohash = "9q9hvni",
-                viewCount = 198,
-                likeCount = 52,
-                commentCount = 28,
-                status = 1,
-                createdAt = "2024-11-09T13:45:00Z",
-                postType = PostType.ALL
-            ),
-            MapPost(
-                mapPostId = 7,
-                convId = 107,
-                creatorId = 1007,
-                title = "Bike Repair 🚴",
-                description = "Free bike maintenance workshop",
-                mediaJson = listOf("url6"),
-                locLat = 37.419,
-                locLng = -122.085,
-                locName = "Community Center",
-                geohash = "9q9hvnb",
-                viewCount = 167,
-                likeCount = 44,
-                commentCount = 13,
-                status = 1,
-                createdAt = "2024-11-09T09:15:00Z",
-                postType = PostType.REQUEST
-            ),
-            MapPost(
-                mapPostId = 8,
-                convId = 108,
-                creatorId = 1008,
-                title = "Live Music 🎵",
-                description = "Jazz night every Friday",
-                mediaJson = null,
-                locLat = 37.426,
-                locLng = -122.091,
-                locName = "Music Venue",
-                geohash = "9q9hvnj",
-                viewCount = 276,
-                likeCount = 82,
-                commentCount = 35,
-                status = 1,
-                createdAt = "2024-11-09T18:00:00Z",
-                postType = PostType.ALL
-            )
-        )
-    }
+    // // 假数据：多个地图帖子（在 Mountain View 区域）
+    // val mockMapPosts = remember {
+    //     listOf(
+    //         MapPost(
+    //             mapPostId = 1,
+    //             convId = 101,
+    //             creatorId = 1001,
+    //             title = "Best Coffee ☕",
+    //             description = "Amazing latte art and cozy atmosphere!",
+    //             mediaJson = listOf("url1", "url2"),
+    //             locLat = 37.422,
+    //             locLng = -122.084,
+    //             locName = "Google Play Store",
+    //             geohash = "9q9hvnf",
+    //             viewCount = 156,
+    //             likeCount = 42,
+    //             commentCount = 8,
+    //             status = 1,
+    //             createdAt = "2024-11-09T10:30:00Z",
+    //             postType = PostType.ALL
+    //         ),
+    //         MapPost(
+    //             mapPostId = 2,
+    //             convId = 102,
+    //             creatorId = 1002,
+    //             title = "Tech Meetup 🚀",
+    //             description = "Weekly tech talks and networking",
+    //             mediaJson = null,
+    //             locLat = 37.425,
+    //             locLng = -122.088,
+    //             locName = "Mountain View Library",
+    //             geohash = "9q9hvng",
+    //             viewCount = 89,
+    //             likeCount = 27,
+    //             commentCount = 15,
+    //             status = 1,
+    //             createdAt = "2024-11-09T14:15:00Z",
+    //             postType = PostType.REQUEST
+    //         ),
+    //         MapPost(
+    //             mapPostId = 3,
+    //             convId = 103,
+    //             creatorId = 1003,
+    //             title = "Yoga Class 🧘",
+    //             description = "Morning yoga sessions every weekend",
+    //             mediaJson = listOf("url3"),
+    //             locLat = 37.427,
+    //             locLng = -122.086,
+    //             locName = "Shoreline Park",
+    //             geohash = "9q9hvnh",
+    //             viewCount = 234,
+    //             likeCount = 68,
+    //             commentCount = 22,
+    //             status = 1,
+    //             createdAt = "2024-11-09T08:00:00Z",
+    //             postType = PostType.ALL
+    //         ),
+    //         MapPost(
+    //             mapPostId = 4,
+    //             convId = 104,
+    //             creatorId = 1004,
+    //             title = "Food Truck 🌮",
+    //             description = "Best tacos in town!",
+    //             mediaJson = null,
+    //             locLat = 37.423,
+    //             locLng = -122.090,
+    //             locName = "Castro Street",
+    //             geohash = "9q9hvne",
+    //             viewCount = 312,
+    //             likeCount = 95,
+    //             commentCount = 41,
+    //             status = 1,
+    //             createdAt = "2024-11-09T12:00:00Z",
+    //             postType = PostType.ALL
+    //         ),
+    //         MapPost(
+    //             mapPostId = 5,
+    //             convId = 105,
+    //             creatorId = 1005,
+    //             title = "Book Club 📚",
+    //             description = "Monthly book discussions",
+    //             mediaJson = listOf("url4", "url5"),
+    //             locLat = 37.420,
+    //             locLng = -122.082,
+    //             locName = "Public Library",
+    //             geohash = "9q9hvnc",
+    //             viewCount = 145,
+    //             likeCount = 38,
+    //             commentCount = 19,
+    //             status = 1,
+    //             createdAt = "2024-11-09T16:30:00Z",
+    //             postType = PostType.REQUEST
+    //         ),
+    //         MapPost(
+    //             mapPostId = 6,
+    //             convId = 106,
+    //             creatorId = 1006,
+    //             title = "Art Gallery 🎨",
+    //             description = "Local artists exhibition",
+    //             mediaJson = null,
+    //             locLat = 37.428,
+    //             locLng = -122.089,
+    //             locName = "Art Center",
+    //             geohash = "9q9hvni",
+    //             viewCount = 198,
+    //             likeCount = 52,
+    //             commentCount = 28,
+    //             status = 1,
+    //             createdAt = "2024-11-09T13:45:00Z",
+    //             postType = PostType.ALL
+    //         ),
+    //         MapPost(
+    //             mapPostId = 7,
+    //             convId = 107,
+    //             creatorId = 1007,
+    //             title = "Bike Repair 🚴",
+    //             description = "Free bike maintenance workshop",
+    //             mediaJson = listOf("url6"),
+    //             locLat = 37.419,
+    //             locLng = -122.085,
+    //             locName = "Community Center",
+    //             geohash = "9q9hvnb",
+    //             viewCount = 167,
+    //             likeCount = 44,
+    //             commentCount = 13,
+    //             status = 1,
+    //             createdAt = "2024-11-09T09:15:00Z",
+    //             postType = PostType.REQUEST
+    //         ),
+    //         MapPost(
+    //             mapPostId = 8,
+    //             convId = 108,
+    //             creatorId = 1008,
+    //             title = "Live Music 🎵",
+    //             description = "Jazz night every Friday",
+    //             mediaJson = null,
+    //             locLat = 37.426,
+    //             locLng = -122.091,
+    //             locName = "Music Venue",
+    //             geohash = "9q9hvnj",
+    //             viewCount = 276,
+    //             likeCount = 82,
+    //             commentCount = 35,
+    //             status = 1,
+    //             createdAt = "2024-11-09T18:00:00Z",
+    //             postType = PostType.ALL
+    //         )
+    //     )
+    // }
     
     // 跟踪当前的 zoom 级别（用于控制 cluster/detail 切换）
     var currentZoom by remember { mutableStateOf(7.0) }
@@ -276,6 +293,50 @@ fun MapScreen(
     
     // 用于节流的 Job
     var geocodingJob by remember { mutableStateOf<Job?>(null) }
+    var fetchPostsJob by remember { mutableStateOf<Job?>(null) }
+    
+    // 加载附近帖子的函数（带节流）
+    fun fetchNearbyPosts(lat: Double, lng: Double, zoom: Double) {
+        // 取消之前的请求
+        fetchPostsJob?.cancel()
+        
+        // 1.5 秒节流
+        fetchPostsJob = scope.launch {
+            delay(1500) // 1.5 秒延迟
+            
+            try {
+                isLoadingPosts = true
+                errorMessage = null
+                
+                val posts = mapPostRepository.getNearbyPosts(
+                    lat = lat,
+                    lng = lng,
+                    zoomLevel = zoom.toInt(),
+                    timeRange = "7D",  // 固定 7 天
+                    postType = "ALL",  // 固定 ALL 类型
+                    maxResults = 100
+                )
+                
+                mapPosts = posts
+                
+                // 重置可见标记，准备重新播放进入动画
+                visibleMarkerIds = emptySet()
+                showMarkers = true
+                
+                // 依次显示每个 marker
+                posts.forEach { post ->
+                    delay(80L) // 每个 marker 间隔 80ms
+                    visibleMarkerIds = visibleMarkerIds + post.mapPostId
+                }
+                
+            } catch (e: Exception) {
+                errorMessage = e.message ?: "加载帖子失败"
+                snackbarHostState.showSnackbar(errorMessage!!)
+            } finally {
+                isLoadingPosts = false
+            }
+        }
+    }
     
     // 地图视口状态 - 使用上次保存的位置
     val mapViewportState = rememberMapViewportState {
@@ -290,16 +351,15 @@ fun MapScreen(
         }
     }
     
-    // ⚡ 延迟显示 markers（地图会在后台预加载，markers 依次淡入）
-    LaunchedEffect(Unit) {
-        // 给地图一点时间完成初始化
-        kotlinx.coroutines.delay(800)
-        showMarkers = true
-        
-        // 依次显示每个 marker，带一点延迟
-        mockMapPosts.forEach { post ->
-            kotlinx.coroutines.delay(80L) // 每个 marker 间隔 80ms
-            visibleMarkerIds = visibleMarkerIds + post.mapPostId
+    // ⚡ 首次加载地图帖子（用户位置获取后）
+    LaunchedEffect(userLocation) {
+        userLocation?.let { location ->
+            // 等待一下地图初始化
+            delay(800)
+            // 使用用户位置或地图中心加载帖子
+            val center = mapViewportState.cameraState?.center ?: location
+            val zoom = mapViewportState.cameraState?.zoom ?: 15.0
+            fetchNearbyPosts(center.latitude(), center.longitude(), zoom)
         }
     }
     
@@ -372,7 +432,7 @@ fun MapScreen(
         }
     }
     
-    // 监听地图中心和缩放变化，获取中心点地名 + 保存位置
+    // 监听地图中心和缩放变化，获取中心点地名 + 保存位置 + 加载附近帖子
     LaunchedEffect(mapViewportState.cameraState) {
         val zoom = mapViewportState.cameraState?.zoom ?: return@LaunchedEffect
         val center = mapViewportState.cameraState?.center ?: return@LaunchedEffect
@@ -423,6 +483,9 @@ fun MapScreen(
                 centerLocationName = null
             }
         }
+        
+        // 🔄 加载附近的帖子（使用 1.5秒 节流）
+        fetchNearbyPosts(center.latitude(), center.longitude(), zoom)
     }
     
     // ⚡ 直接显示地图，无动画
@@ -515,9 +578,9 @@ fun MapScreen(
             }
             
             // Mapbox 原生 Clustering：zoom ≤ 13 时显示蓝色聚合圆圈
-            if (showMarkers && currentZoom <= 13.0) {
+            if (showMarkers && currentZoom <= 13.0 && mapPosts.isNotEmpty()) {
                 PointAnnotationGroup(
-                    annotations = mockMapPosts.map { post ->
+                    annotations = mapPosts.map { post ->
                         PointAnnotationOptions()
                             .withPoint(Point.fromLngLat(post.locLng, post.locLat))
                     },
@@ -584,8 +647,8 @@ fun MapScreen(
             }
             
             // ViewAnnotation 详细卡片：zoom > 13 时显示
-            if (showMarkers && currentZoom > 13.0) {
-                mockMapPosts.forEach { post ->
+            if (showMarkers && currentZoom > 13.0 && mapPosts.isNotEmpty()) {
+                mapPosts.forEach { post ->
                     // 只渲染已经设置为可见的 markers
                     if (visibleMarkerIds.contains(post.mapPostId)) {
                         ViewAnnotation(
@@ -860,6 +923,32 @@ fun MapScreen(
         //         fontSize = 12.sp
         //     )
         // }
+        
+        // Loading Indicator - 左上角
+        if (isLoadingPosts) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = 16.dp, top = 70.dp)
+                    .size(24.dp)
+                    .background(Color.White.copy(alpha = 0.9f), CircleShape)
+                    .padding(4.dp)
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.fillMaxSize(),
+                    color = Color(0xFF4C90E2),
+                    strokeWidth = 2.dp
+                )
+            }
+        }
+        
+        // Snackbar Host - 底部
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 100.dp)
+        )
     }
 }
 

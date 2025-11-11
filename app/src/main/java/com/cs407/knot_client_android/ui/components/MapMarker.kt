@@ -23,14 +23,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.cs407.knot_client_android.data.model.MapPost
+import com.cs407.knot_client_android.data.model.response.MapPostNearby
 
 /**
  * 自定义长方形地图 Marker
  */
 @Composable
 fun MapMarker(
-    post: MapPost,
+    post: MapPostNearby,
     onClick: () -> Unit = {}
 ) {
     val cornerRadius = RoundedCornerShape(15.dp)
