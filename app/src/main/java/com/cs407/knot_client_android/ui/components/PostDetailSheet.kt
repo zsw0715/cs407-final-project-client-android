@@ -142,6 +142,21 @@ fun PostDetailSheet(
         }
     }
     
+    // 关闭按钮触发的关闭动画
+    fun closeWithAnimation() {
+        coroutineScope.launch {
+            animatedHeight.animateTo(
+                targetValue = 0f,
+                animationSpec = spring(
+                    dampingRatio = 0.75f,
+                    stiffness = Spring.StiffnessLow
+                )
+            )
+            // 动画完成后通知外部
+            onDismiss()
+        }
+    }
+    
     // 监听动画高度，当接近 0 时自动同步状态
     LaunchedEffect(animatedHeight.value) {
         if (animatedHeight.value < 5f && isVisible) {
@@ -282,6 +297,7 @@ fun PostDetailSheet(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(Color(0xFFF8F6F4))
+                        .clip(RoundedCornerShape(currentCornerRadius))
                         .padding(horizontal = 28.dp)
                 ) {
                     Spacer(Modifier.height(28.dp))
@@ -418,7 +434,7 @@ fun PostDetailSheet(
                                 )
                             )
                             .clickable(
-                                onClick = onDismiss,
+                                onClick = { closeWithAnimation() },
                                 indication = null,
                                 interactionSource = closeButtonInteractionSource
                             ),
@@ -596,7 +612,7 @@ fun CommentItem(comment: Comment) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
+            .background(Color.White.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
             .padding(12.dp)
     ) {
         // 头像
