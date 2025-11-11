@@ -73,6 +73,7 @@ import com.cs407.knot_client_android.data.model.PostType
 import com.cs407.knot_client_android.data.model.response.MapPostNearby
 import com.cs407.knot_client_android.data.repository.MapPostRepository
 import com.cs407.knot_client_android.ui.components.MapMarker
+import com.cs407.knot_client_android.ui.components.PostDetailSheet
 import com.cs407.knot_client_android.utils.LocationManager
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
@@ -139,6 +140,10 @@ fun MapScreen(
     var userLocation by remember { mutableStateOf<Point?>(null) }
     var hasPermission by remember { mutableStateOf(locationManager.hasLocationPermission()) }
     var centerLocationName by remember { mutableStateOf<String?>(null) }
+    
+    // PostDetailSheet 状态
+    var selectedPost by remember { mutableStateOf<MapPostNearby?>(null) }
+    var isPostDetailVisible by remember { mutableStateOf(false) }
     
     // // 假数据：多个地图帖子（在 Mountain View 区域）
     // val mockMapPosts = remember {
@@ -746,8 +751,9 @@ fun MapScreen(
                                 MapMarker(
                                     post = post,
                                     onClick = {
-                                        // TODO: 点击 marker 后打开帖子详情
-                                        // navController.navigate("post_detail/${post.mapPostId}")
+                                        // 点击 marker 后打开帖子详情 Sheet
+                                        selectedPost = post
+                                        isPostDetailVisible = true
                                     }
                                 )
                             }
@@ -1017,6 +1023,18 @@ fun MapScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 100.dp)
+        )
+        
+        // PostDetailSheet - 帖子详情底部弹出层
+        PostDetailSheet(
+            post = selectedPost,
+            isVisible = isPostDetailVisible,
+            onDismiss = {
+                isPostDetailVisible = false
+                selectedPost = null
+            },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
         )
     }
 }
