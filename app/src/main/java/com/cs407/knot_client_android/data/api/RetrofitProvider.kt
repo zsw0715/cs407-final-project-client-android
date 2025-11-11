@@ -49,6 +49,19 @@ object RetrofitProvider {
     }
 
     /**
+     * 创建地图帖子 API 服务
+     * @param baseUrl 后端地址，模拟器使用 http://10.0.2.2:8080
+     */
+    fun createMapPostService(baseUrl: String): MapPostApiService {
+        return Retrofit.Builder()
+            .baseUrl(baseUrl)
+            .client(createLoggingClient())
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(MapPostApiService::class.java)
+    }
+
+    /**
      * 创建 Geocoding API 服务
      */
     fun createGeocodingService(): GeocodingApiService {
