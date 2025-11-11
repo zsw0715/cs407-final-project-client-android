@@ -42,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.content.Context
+import androidx.compose.material.icons.outlined.Face
 import androidx.compose.ui.platform.LocalContext
 import com.cs407.knot_client_android.R
 import com.cs407.knot_client_android.data.api.RetrofitProvider
@@ -649,7 +650,7 @@ fun PostContentSection(
                     color = Color(0xFF1C1B1F)
                 )
                 Text(
-                    text = "${(post?.distance ?: 0.0 / 1000).toInt()} km away",
+                    text = "${(post?.distance ?: 0.0 / 1000).toInt()} meters away",
                     fontSize = 13.sp,
                     color = Color(0xFF9B9B9B)
                 )
@@ -693,6 +694,11 @@ fun PostContentSection(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
+            StatItem(
+                icon = Icons.Outlined.Face,
+                count = postDetail.viewCount,
+                label = "Views"
+            )
             StatItem(
                 icon = Icons.Outlined.FavoriteBorder,
                 count = postDetail.likeCount,
