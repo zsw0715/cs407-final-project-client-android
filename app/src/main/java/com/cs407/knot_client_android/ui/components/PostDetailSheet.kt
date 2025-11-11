@@ -91,6 +91,12 @@ fun PostDetailSheet(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var localCommentCount by remember { mutableStateOf(0) }
     
+    // 分页状态
+    var currentPage by remember { mutableStateOf(1) }
+    var totalPages by remember { mutableStateOf(1) }
+    var isLoadingMoreComments by remember { mutableStateOf(false) }
+    val hasMorePages by remember { derivedStateOf { currentPage < totalPages } }
+    
     // 加载帖子详情和评论
     LaunchedEffect(post?.mapPostId, isVisible) {
         if (isVisible && post != null) {
@@ -107,24 +113,28 @@ fun PostDetailSheet(
                     postDetail = response.data
                     localCommentCount = response.data.commentCount
                     
-                    // 加载评论
+                    // 加载评论（第一页）
                     isLoadingComments = true
                     try {
                         val commentsResponse = apiService.getConversationMessages(
                             token = "Bearer $token",
                             conversationId = response.data.convId,
                             page = 1,
-                            size = 20
+                            size = 5  // 每页5条
                         )
                         if (commentsResponse.success && commentsResponse.data != null) {
+                            // 保存分页信息
+                            currentPage = commentsResponse.data.page
+                            totalPages = commentsResponse.data.totalPages
+                            
                             // 转换 ConversationMessage 到 Comment
                             comments = commentsResponse.data.messageList.map { msg: ConversationMessage ->
                                 Comment(
                                     commentId = msg.msgId,
-                                    username = "User ${msg.senderId}", // TODO: 需要获取用户名
+                                    username = "User ${msg.senderId}",
                                     content = msg.contentText ?: "",
                                     timestamp = formatTimestamp(msg.createdAt),
-                                    likeCount = 0 // TODO: 需要获取点赞数
+                                    likeCount = 0
                                 )
                             }
                         }
@@ -185,17 +195,64 @@ fun PostDetailSheet(
         }
     }
     
+    // 加载下一页评论的函数
+    val loadMoreComments: suspend () -> Unit = {
+        postDetail?.let { currentPostDetail ->
+            if (!isLoadingMoreComments && hasMorePages) {
+                isLoadingMoreComments = true
+                try {
+                    val tokenStore = TokenStore(context)
+                    val token = tokenStore.getAccessToken()
+                    val apiService = RetrofitProvider.createMapPostService("http://10.0.2.2:8080")
+                    
+                    val commentsResponse = apiService.getConversationMessages(
+                        token = "Bearer $token",
+                        conversationId = currentPostDetail.convId,
+                        page = currentPage + 1,
+                        size = 5
+                    )
+                
+                if (commentsResponse.success && commentsResponse.data != null) {
+                    // 更新分页信息
+                    currentPage = commentsResponse.data.page
+                    totalPages = commentsResponse.data.totalPages
+                    
+                    // 追加新评论到列表
+                    val newComments = commentsResponse.data.messageList.map { msg: ConversationMessage ->
+                        Comment(
+                            commentId = msg.msgId,
+                            username = "User ${msg.senderId}",
+                            content = msg.contentText ?: "",
+                            timestamp = formatTimestamp(msg.createdAt),
+                            likeCount = 0
+                        )
+                    }
+                    comments = comments + newComments
+                }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                } finally {
+                    isLoadingMoreComments = false
+                }
+            }
+        }
+    }
+    
     PostDetailSheetContent(
         post = post,
         postDetail = postDetail,
         comments = comments,
         localCommentCount = localCommentCount,
+        currentPage = currentPage,
         isVisible = isVisible,
         isLoadingDetail = isLoadingDetail,
         isLoadingComments = isLoadingComments,
+        isLoadingMoreComments = isLoadingMoreComments,
+        hasMorePages = hasMorePages,
         errorMessage = errorMessage,
         onDismiss = onDismiss,
         mainViewModel = mainViewModel,
+        onLoadMoreComments = loadMoreComments,
         modifier = modifier
     )
 }
@@ -230,12 +287,16 @@ private fun PostDetailSheetContent(
     postDetail: MapPostDetailResponse?,
     comments: List<Comment>,
     localCommentCount: Int,
+    currentPage: Int,
     isVisible: Boolean,
     isLoadingDetail: Boolean,
     isLoadingComments: Boolean,
+    isLoadingMoreComments: Boolean,
+    hasMorePages: Boolean,
     errorMessage: String?,
     onDismiss: () -> Unit,
     mainViewModel: MainViewModel,
+    onLoadMoreComments: suspend () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val configuration = LocalConfiguration.current
@@ -556,6 +617,34 @@ private fun PostDetailSheetContent(
                                                 fontSize = 14.sp,
                                                 color = Color(0xFF9B9B9B)
                                             )
+                                        }
+                                    }
+                                }
+                                
+                                // 加载更多评论
+                                if (hasMorePages && comments.isNotEmpty()) {
+                                    item(key = "load_more_$currentPage") {
+                                        // 自动触发加载下一页（使用 currentPage 作为 key 确保每页只触发一次）
+                                        LaunchedEffect(currentPage) {
+                                            if (!isLoadingMoreComments) {
+                                                onLoadMoreComments()
+                                            }
+                                        }
+                                        
+                                        // 加载中指示器
+                                        if (isLoadingMoreComments) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(16.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                androidx.compose.material3.CircularProgressIndicator(
+                                                    modifier = Modifier.size(24.dp),
+                                                    color = Color(0xFF636EF1),
+                                                    strokeWidth = 2.dp
+                                                )
+                                            }
                                         }
                                     }
                                 }
