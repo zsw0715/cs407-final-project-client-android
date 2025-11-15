@@ -48,3 +48,5 @@ data class FriendUiState(
     val logs: List<String> = emptyList(),
     val bannerMessage: BannerMessage? = null
 )
+
+

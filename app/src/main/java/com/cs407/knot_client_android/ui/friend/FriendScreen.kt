@@ -84,6 +84,7 @@ fun FriendScreen(
         onAccept = viewModel::acceptRequest,
         onReject = viewModel::rejectRequest,
         onResend = viewModel::resendRequest,
+        onRemoveFriend = viewModel::removeFriend,
         onToggleConnection = viewModel::toggleConnection,
         onWsUrlChange = viewModel::onWsUrlChange,
         onReconnect = viewModel::reconnect,
@@ -103,6 +104,7 @@ private fun FriendScreenContent(
     onAccept: (Long) -> Unit,
     onReject: (Long) -> Unit,
     onResend: (FriendRequestItem) -> Unit,
+    onRemoveFriend: (FriendUserSummary) -> Unit,
     onToggleConnection: () -> Unit,
     onWsUrlChange: (String) -> Unit,
     onReconnect: () -> Unit,
@@ -111,6 +113,7 @@ private fun FriendScreenContent(
     val backgroundBrush = Brush.verticalGradient(
         listOf(Color(0xFFF8F6F4), Color(0xFFF3F0FA))
     )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -130,7 +133,7 @@ private fun FriendScreenContent(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "所有好友操作都通过 WebSocket 实时完成，发送/接受/拒绝/重发都能即时同步。",
+                        text = "All friend operations go through a live WebSocket so send/accept/reject/resend stays real-time.",
                         fontSize = 14.sp,
                         color = Color(0xFF6B7280)
                     )
@@ -154,7 +157,7 @@ private fun FriendScreenContent(
                                         fontSize = 13.sp
                                     )
                                     Text(
-                                        text = "关闭",
+                                        text = "Dismiss",
                                         modifier = Modifier
                                             .padding(start = 12.dp)
                                             .clickable { onBannerDismiss() }
@@ -195,9 +198,9 @@ private fun FriendScreenContent(
 
             item {
                 RequestListCard(
-                    title = "待处理申请",
-                    subtitle = "收到好友请求后，可实时接受或拒绝。",
-                    emptyHint = "暂无新的好友请求。",
+                    title = "Incoming requests",
+                    subtitle = "Decide instantly when someone reaches out.",
+                    emptyHint = "No pending friend requests.",
                     requests = state.incomingRequests,
                     actionContent = { item ->
                         Row(
@@ -209,13 +212,13 @@ private fun FriendScreenContent(
                                 modifier = Modifier.weight(1f),
                                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981))
                             ) {
-                                Text("接受")
+                                Text("Accept")
                             }
                             OutlinedButton(
                                 onClick = { onReject(item.requestId) },
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Text("拒绝")
+                                Text("Reject")
                             }
                         }
                     }
@@ -224,16 +227,16 @@ private fun FriendScreenContent(
 
             item {
                 RequestListCard(
-                    title = "我发出的申请",
-                    subtitle = "系统通过 ACK 告知发送状态，若被拒绝可直接重发。",
-                    emptyHint = "还没有发出任何申请。",
+                    title = "Requests I sent",
+                    subtitle = "Watch ACK statuses in real time and resend after rejection.",
+                    emptyHint = "You haven't sent any requests yet.",
                     requests = state.outgoingRequests,
                     actionContent = { item ->
                         if (item.status == FriendRequestStatus.Pending) {
                             OutlinedButton(onClick = { onResend(item) }) {
                                 Icon(Icons.Outlined.Refresh, contentDescription = null)
                                 Spacer(Modifier.width(6.dp))
-                                Text("重发")
+                                Text("Resend")
                             }
                         }
                     }
@@ -242,12 +245,12 @@ private fun FriendScreenContent(
 
             item {
                 FriendSectionCard(
-                    title = "好友列表",
-                    subtitle = "接受后会自动建立即时会话，双方立即可聊。"
+                    title = "Friend list",
+                    subtitle = "Accepting a request instantly creates a dedicated chat."
                 ) {
                     if (state.friends.isEmpty()) {
                         Text(
-                            text = "暂无好友。接受申请或等待对方同意后会自动出现在这里。",
+                            text = "No friends yet. Anyone you connect with shows up here.",
                             color = Color(0xFF6B7280),
                             fontSize = 13.sp
                         )
@@ -279,11 +282,19 @@ private fun FriendScreenContent(
                                                 )
                                             }
                                         }
-                                        Text(
-                                            text = "可聊天",
-                                            fontSize = 12.sp,
-                                            color = Color(0xFF10B981)
-                                        )
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = "Ready to chat",
+                                                fontSize = 12.sp,
+                                                color = Color(0xFF10B981)
+                                            )
+                                            OutlinedButton(onClick = { onRemoveFriend(friend) }) {
+                                                Text("Remove")
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -294,13 +305,13 @@ private fun FriendScreenContent(
 
             item {
                 FriendSectionCard(
-                    title = "实时日志",
-                    subtitle = "方便调试：展示最近 6 条连接与推送事件"
+                    title = "Realtime log",
+                    subtitle = "Debug by watching the latest six connection + push events"
                 ) {
                     val lastLogs = state.logs.takeLast(6).reversed()
                     if (lastLogs.isEmpty()) {
                         Text(
-                            text = "暂无日志，连接后即可看到 AUTH/ACK/推送等事件。",
+                            text = "Connect to the socket to start seeing AUTH / ACK / push events.",
                             color = Color(0xFF6B7280),
                             fontSize = 13.sp
                         )
@@ -322,8 +333,9 @@ private fun FriendScreenContent(
 
             item { Spacer(modifier = Modifier.height(80.dp)) }
         }
-        
+
         // 右下角浮动按钮 - 返回聊天页面
+
         FloatingActionButton(
             icon = Icons.Outlined.Email,
             onClick = {
@@ -341,24 +353,28 @@ private fun FriendScreenContent(
 @Composable
 private fun WorkflowCard() {
     FriendSectionCard(
-        title = "工作流速览",
-        subtitle = "后端提供的 4 个核心阶段全部通过 WebSocket 完成"
+        title = "Workflow",
+        subtitle = "Four (now five) backend steps that all run over WebSocket"
     ) {
         WorkflowRow(
-            title = "1. 发送申请",
-            detail = "FRIEND_REQUEST_SEND -> 收到 FRIEND_REQUEST_ACK(sent)"
+            title = "1. Send",
+            detail = "FRIEND_REQUEST_SEND → FRIEND_REQUEST_ACK(sent)"
         )
         WorkflowRow(
-            title = "2. 接受申请",
-            detail = "FRIEND_REQUEST_ACCEPT -> ACK(accepted) + auto convId"
+            title = "2. Accept",
+            detail = "FRIEND_REQUEST_ACCEPT → ACK(accepted) + auto convId"
         )
         WorkflowRow(
-            title = "3. 拒绝申请",
-            detail = "FRIEND_REQUEST_REJECT -> ACK(rejected)"
+            title = "3. Reject",
+            detail = "FRIEND_REQUEST_REJECT → ACK(rejected)"
         )
         WorkflowRow(
-            title = "4. 重发",
-            detail = "被拒后再次 SEND，后端会自动更新记录并推送"
+            title = "4. Resend",
+            detail = "Resend after rejection to re-open the pending request"
+        )
+        WorkflowRow(
+            title = "5. Remove",
+            detail = "FRIEND_REMOVE trims friends without leaving the UI"
         )
     }
 }
@@ -379,8 +395,8 @@ private fun ConnectionCard(
     onReconnect: () -> Unit
 ) {
     FriendSectionCard(
-        title = "实时连接",
-        subtitle = "保持 WebSocket 在线，系统会自动发送 AUTH + HEARTBEAT"
+        title = "Live connection",
+        subtitle = "Keep the WebSocket online so AUTH + HEARTBEAT stay healthy"
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -388,13 +404,13 @@ private fun ConnectionCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = if (state.isConnected) "状态：已连接" else "状态：未连接",
+                text = if (state.isConnected) "Status: Connected" else "Status: Disconnected",
                 fontWeight = FontWeight.Medium,
                 color = if (state.isConnected) Color(0xFF10B981) else Color(0xFFEF4444)
             )
             AssistChip(
                 onClick = {},
-                label = { Text(text = state.currentUserId?.let { "UID $it" } ?: "未登录") },
+                label = { Text(text = state.currentUserId?.let { "UID $it" } ?: "Signed out") },
                 colors = AssistChipDefaults.assistChipColors(
                     containerColor = Color(0xFFE0E7FF)
                 )
@@ -403,7 +419,7 @@ private fun ConnectionCard(
         OutlinedTextField(
             value = state.wsUrl,
             onValueChange = onWsUrlChange,
-            label = { Text("WebSocket 地址") },
+            label = { Text("WebSocket URL") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             shape = RoundedCornerShape(14.dp)
@@ -419,13 +435,13 @@ private fun ConnectionCard(
                     containerColor = if (state.isConnected) Color(0xFFEF4444) else Color(0xFF6366F1)
                 )
             ) {
-                Text(if (state.isConnected) "断开" else "连接")
+                Text(if (state.isConnected) "Disconnect" else "Connect")
             }
             OutlinedButton(
                 onClick = onReconnect,
                 modifier = Modifier.weight(1f)
             ) {
-                Text("重新连接")
+                Text("Reconnect")
             }
         }
     }
@@ -441,13 +457,13 @@ private fun SendRequestCard(
     enabled: Boolean
 ) {
     FriendSectionCard(
-        title = "发送好友申请",
-        subtitle = "所有字段会被序列化为 JSON，经 WebSocket 发往服务端"
+        title = "Send friend request",
+        subtitle = "All fields are serialized to JSON and streamed over WebSocket"
     ) {
         OutlinedTextField(
             value = receiverIdInput,
             onValueChange = onReceiverIdChange,
-            label = { Text("接收者用户 ID") },
+            label = { Text("Receiver user ID") },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(14.dp),
             singleLine = true,
@@ -456,7 +472,7 @@ private fun SendRequestCard(
         OutlinedTextField(
             value = messageInput,
             onValueChange = onMessageChange,
-            label = { Text("留言 (可选)") },
+            label = { Text("Message (optional)") },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(14.dp),
             minLines = 2
@@ -466,10 +482,10 @@ private fun SendRequestCard(
             enabled = enabled && receiverIdInput.isNotBlank(),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("发送 FRIEND_REQUEST_SEND")
+            Text("Send FRIEND_REQUEST_SEND")
         }
         Text(
-            text = "示例：{\"type\":\"FRIEND_REQUEST_SEND\", \"receiverId\": 2, \"message\": \"Hi!\"}",
+            text = "Example: {\"type\":\"FRIEND_REQUEST_SEND\", \"receiverId\":2, \"message\":\"Hi!\"}",
             fontSize = 12.sp,
             color = Color(0xFF6B7280)
         )
@@ -514,7 +530,7 @@ private fun RequestCard(
             Column {
                 Text(text = item.peer.displayName, fontWeight = FontWeight.Medium)
                 Text(
-                    text = "留言：${item.message}",
+                    text = "Message: ${item.message}",
                     fontSize = 12.sp,
                     color = Color(0xFF6B7280)
                 )
@@ -523,7 +539,7 @@ private fun RequestCard(
                 onClick = {},
                 label = {
                     Text(
-                        text = if (item.direction == FriendRequestDirection.Incoming) "待处理" else "等待对方",
+                        text = if (item.direction == FriendRequestDirection.Incoming) "Awaiting your action" else "Waiting on peer",
                         fontSize = 12.sp
                     )
                 },
@@ -539,7 +555,7 @@ private fun RequestCard(
             )
         }
         Text(
-            text = "时间：${formatTimestamp(item.timestamp)}",
+            text = "Time: ${formatTimestamp(item.timestamp)}",
             fontSize = 11.sp,
             color = Color(0xFF9CA3AF)
         )
@@ -584,6 +600,7 @@ private fun formatTimestamp(timestamp: Long?): String {
 @Preview(showBackground = true)
 @Composable
 fun FriendScreenPreview() {
+    FriendScreen(navController = rememberNavController())
     val sampleState = FriendUiState(
         isConnected = true,
         incomingRequests = listOf(
@@ -609,7 +626,7 @@ fun FriendScreenPreview() {
         friends = listOf(
             FriendUserSummary(userId = 2, username = "user2")
         ),
-        logs = listOf("[12:00:00] ✅ 已连接", "[12:00:02] ⬇️ FRIEND_REQUEST_NEW")
+        logs = listOf("[12:00:00] ✅ Connected", "[12:00:02] ⬇️ FRIEND_REQUEST_NEW")
     )
     FriendScreenContent(
         navController = rememberNavController(),
@@ -622,10 +639,10 @@ fun FriendScreenPreview() {
         onAccept = { _ -> },
         onReject = { _ -> },
         onResend = { _ -> },
+        onRemoveFriend = { _ -> },
         onToggleConnection = {},
         onWsUrlChange = {},
         onReconnect = {},
         onBannerDismiss = {}
     )
 }
-

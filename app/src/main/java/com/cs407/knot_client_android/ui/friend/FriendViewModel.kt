@@ -44,7 +44,7 @@ class FriendViewModel(app: Application) : AndroidViewModel(app) {
     fun toggleConnection() {
         if (_uiState.value.isConnected) {
             wsManager.disconnect()
-            showBanner("已手动断开 WebSocket", false)
+            showBanner("WebSocket disconnected", false)
         } else {
             reconnect()
         }
@@ -54,7 +54,7 @@ class FriendViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val jwt = tokenStore.get()
             if (jwt.isNullOrBlank()) {
-                showBanner("缺少 access token，请重新登录", true)
+                showBanner("Missing access token. Please sign in again.", true)
                 return@launch
             }
             wsManager.connect(_uiState.value.wsUrl, jwt)
@@ -72,11 +72,11 @@ class FriendViewModel(app: Application) : AndroidViewModel(app) {
     fun sendFriendRequest(receiverInput: String, message: String) {
         val receiverId = receiverInput.toLongOrNull()
         if (receiverId == null) {
-            showBanner("请输入有效的用户 ID", true)
+            showBanner("Enter a valid user ID", true)
             return
         }
         if (!_uiState.value.isConnected) {
-            showBanner("请先连接 WebSocket", true)
+            showBanner("Connect WebSocket first", true)
             return
         }
         val payload = mapOf(
@@ -86,7 +86,7 @@ class FriendViewModel(app: Application) : AndroidViewModel(app) {
         )
         sendDrafts.addLast(FriendRequestDraft(receiverId, message))
         wsManager.send(gson.toJson(payload))
-        addLog("尝试向用户 #$receiverId 发送好友申请")
+        addLog("Trying to add user #$receiverId as a friend")
     }
 
     fun acceptRequest(requestId: Long) {
@@ -95,7 +95,7 @@ class FriendViewModel(app: Application) : AndroidViewModel(app) {
             "requestId" to requestId
         )
         wsManager.send(gson.toJson(payload))
-        addLog("发送接受操作 -> #$requestId")
+        addLog("Accepting request -> #$requestId")
     }
 
     fun rejectRequest(requestId: Long) {
@@ -104,23 +104,47 @@ class FriendViewModel(app: Application) : AndroidViewModel(app) {
             "requestId" to requestId
         )
         wsManager.send(gson.toJson(payload))
-        addLog("发送拒绝操作 -> #$requestId")
+        addLog("Rejecting request -> #$requestId")
     }
 
     fun resendRequest(item: FriendRequestItem) {
         val receiverId = item.peer.userId
         if (receiverId == null) {
-            showBanner("无法获取对方用户 ID", true)
+            showBanner("Missing receiver id", true)
             return
         }
         sendFriendRequest(receiverId.toString(), item.message)
+    }
+
+    fun removeFriend(friend: FriendUserSummary) {
+        val friendId = friend.userId
+        if (friendId == null) {
+            showBanner("Missing friend id", true)
+            return
+        }
+        if (!_uiState.value.isConnected) {
+            showBanner("Connect WebSocket first", true)
+            return
+        }
+        val payload = mapOf(
+            "type" to "FRIEND_REMOVE",
+            "friendId" to friendId
+        )
+        wsManager.send(gson.toJson(payload))
+        addLog("Removing friend -> #$friendId")
+        _uiState.update { state ->
+            state.copy(
+                friends = state.friends.filterNot { it.userId == friendId }
+            )
+        }
+        showBanner("${friend.displayName} removed", false)
     }
 
     private fun observeConnectionState() {
         viewModelScope.launch {
             wsManager.connectionState.collectLatest { connected ->
                 _uiState.update { it.copy(isConnected = connected) }
-                addLog(if (connected) "✅ 已连接至好友系统" else "❌ WebSocket 已断开")
+                addLog(if (connected) "✅ Connected to friend service" else "❌ WebSocket disconnected")
             }
         }
     }
@@ -135,10 +159,11 @@ class FriendViewModel(app: Application) : AndroidViewModel(app) {
                         "FRIEND_REQUEST_NEW" -> handleIncomingRequest(obj)
                         "FRIEND_REQUEST_ACK" -> handleAck(obj)
                         "FRIEND_ADDED" -> handleFriendAdded(obj)
+                        "FRIEND_REMOVED" -> handleFriendRemoved(obj)
                         else -> Unit
                     }
                 }.onFailure {
-                    showBanner("解析消息失败: ${it.message}", true)
+                    showBanner("Failed to parse message: ${it.message}", true)
                 }
             }
         }
@@ -166,7 +191,7 @@ class FriendViewModel(app: Application) : AndroidViewModel(app) {
             state.copy(
                 incomingRequests = (state.incomingRequests.filterNot { it.requestId == requestId } + newItem)
                     .sortedByDescending { it.timestamp ?: 0L },
-                bannerMessage = BannerMessage("收到来自 ${userSummary.displayName} 的好友申请")
+                bannerMessage = BannerMessage("Friend request from ${userSummary.displayName}")
             )
         }
     }
@@ -179,7 +204,7 @@ class FriendViewModel(app: Application) : AndroidViewModel(app) {
             "sent" -> handleSendAck(requestId, timestamp)
             "accepted" -> handleAcceptAck(requestId, obj.get("convId")?.asLong)
             "rejected" -> handleRejectAck(requestId)
-            else -> showBanner("收到未知状态: $status", true)
+            else -> showBanner("Unknown status: $status", true)
         }
     }
 
@@ -201,7 +226,7 @@ class FriendViewModel(app: Application) : AndroidViewModel(app) {
             state.copy(
                 outgoingRequests = (state.outgoingRequests.filterNot { it.requestId == requestId } + newItem)
                     .sortedByDescending { it.timestamp ?: 0L },
-                bannerMessage = BannerMessage("好友申请已发送，等待对方确认")
+                bannerMessage = BannerMessage("Friend request sent. Waiting for response.")
             )
         }
     }
@@ -211,7 +236,7 @@ class FriendViewModel(app: Application) : AndroidViewModel(app) {
             state.copy(
                 incomingRequests = state.incomingRequests.filterNot { it.requestId == requestId },
                 bannerMessage = BannerMessage(
-                    text = "已接受好友申请，自动创建会话 ${convId ?: "--"}",
+                    text = "Request accepted. Chat ${convId ?: "--"} created.",
                     isError = false
                 )
             )
@@ -223,7 +248,7 @@ class FriendViewModel(app: Application) : AndroidViewModel(app) {
             state.copy(
                 incomingRequests = state.incomingRequests.filterNot { it.requestId == requestId },
                 outgoingRequests = state.outgoingRequests.filterNot { it.requestId == requestId },
-                bannerMessage = BannerMessage("已拒绝或取消好友申请")
+                bannerMessage = BannerMessage("Request rejected or cancelled")
             )
         }
     }
@@ -243,7 +268,17 @@ class FriendViewModel(app: Application) : AndroidViewModel(app) {
                 } ?: state.outgoingRequests,
                 friends = (state.friends.filterNot { it.userId == user.userId } + user)
                     .sortedBy { it.displayName },
-                bannerMessage = BannerMessage("${user.displayName} 已成为好友，可立即聊天")
+                bannerMessage = BannerMessage("${user.displayName} added as a friend")
+            )
+        }
+    }
+
+    private fun handleFriendRemoved(obj: JsonObject) {
+        val friendId = obj.get("friendId")?.asLong ?: return
+        _uiState.update { state ->
+            state.copy(
+                friends = state.friends.filterNot { it.userId == friendId },
+                bannerMessage = BannerMessage("Friend #$friendId removed")
             )
         }
     }
