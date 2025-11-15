@@ -49,4 +49,3 @@ data class FriendUiState(
     val bannerMessage: BannerMessage? = null
 )
 
-

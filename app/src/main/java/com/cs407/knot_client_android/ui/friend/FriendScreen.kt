@@ -119,23 +119,19 @@ private fun FriendScreenContent(
             .fillMaxSize()
             .background(backgroundBrush)
     ) {
+
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 20.dp, vertical = 24.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 20.dp, vertical = 24.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         text = "Friend Management System",
                         fontSize = 26.sp,
                         fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "All friend operations go through a live WebSocket so send/accept/reject/resend stays real-time.",
-                        fontSize = 14.sp,
-                        color = Color(0xFF6B7280)
                     )
                     AnimatedVisibility(visible = state.bannerMessage != null) {
                         state.bannerMessage?.let { banner ->
@@ -173,10 +169,6 @@ private fun FriendScreenContent(
             }
 
             item {
-                WorkflowCard()
-            }
-
-            item {
                 ConnectionCard(
                     state = state,
                     onToggleConnection = onToggleConnection,
@@ -199,7 +191,7 @@ private fun FriendScreenContent(
             item {
                 RequestListCard(
                     title = "Incoming requests",
-                    subtitle = "Decide instantly when someone reaches out.",
+                    subtitle = null,
                     emptyHint = "No pending friend requests.",
                     requests = state.incomingRequests,
                     actionContent = { item ->
@@ -228,7 +220,7 @@ private fun FriendScreenContent(
             item {
                 RequestListCard(
                     title = "Requests I sent",
-                    subtitle = "Watch ACK statuses in real time and resend after rejection.",
+                    subtitle = null,
                     emptyHint = "You haven't sent any requests yet.",
                     requests = state.outgoingRequests,
                     actionContent = { item ->
@@ -246,7 +238,7 @@ private fun FriendScreenContent(
             item {
                 FriendSectionCard(
                     title = "Friend list",
-                    subtitle = "Accepting a request instantly creates a dedicated chat."
+                    subtitle = null
                 ) {
                     if (state.friends.isEmpty()) {
                         Text(
@@ -306,7 +298,7 @@ private fun FriendScreenContent(
             item {
                 FriendSectionCard(
                     title = "Realtime log",
-                    subtitle = "Debug by watching the latest six connection + push events"
+                    subtitle = null
                 ) {
                     val lastLogs = state.logs.takeLast(6).reversed()
                     if (lastLogs.isEmpty()) {
@@ -351,43 +343,6 @@ private fun FriendScreenContent(
 }
 
 @Composable
-private fun WorkflowCard() {
-    FriendSectionCard(
-        title = "Workflow",
-        subtitle = "Four (now five) backend steps that all run over WebSocket"
-    ) {
-        WorkflowRow(
-            title = "1. Send",
-            detail = "FRIEND_REQUEST_SEND → FRIEND_REQUEST_ACK(sent)"
-        )
-        WorkflowRow(
-            title = "2. Accept",
-            detail = "FRIEND_REQUEST_ACCEPT → ACK(accepted) + auto convId"
-        )
-        WorkflowRow(
-            title = "3. Reject",
-            detail = "FRIEND_REQUEST_REJECT → ACK(rejected)"
-        )
-        WorkflowRow(
-            title = "4. Resend",
-            detail = "Resend after rejection to re-open the pending request"
-        )
-        WorkflowRow(
-            title = "5. Remove",
-            detail = "FRIEND_REMOVE trims friends without leaving the UI"
-        )
-    }
-}
-
-@Composable
-private fun WorkflowRow(title: String, detail: String) {
-    Column(modifier = Modifier.padding(vertical = 4.dp)) {
-        Text(text = title, fontWeight = FontWeight.Medium)
-        Text(text = detail, fontSize = 12.sp, color = Color(0xFF6B7280))
-    }
-}
-
-@Composable
 private fun ConnectionCard(
     state: FriendUiState,
     onToggleConnection: () -> Unit,
@@ -395,8 +350,8 @@ private fun ConnectionCard(
     onReconnect: () -> Unit
 ) {
     FriendSectionCard(
-        title = "Live connection",
-        subtitle = "Keep the WebSocket online so AUTH + HEARTBEAT stay healthy"
+        title = "Connection",
+        subtitle = null
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -457,8 +412,8 @@ private fun SendRequestCard(
     enabled: Boolean
 ) {
     FriendSectionCard(
-        title = "Send friend request",
-        subtitle = "All fields are serialized to JSON and streamed over WebSocket"
+        title = "Send request",
+        subtitle = null
     ) {
         OutlinedTextField(
             value = receiverIdInput,
@@ -482,20 +437,15 @@ private fun SendRequestCard(
             enabled = enabled && receiverIdInput.isNotBlank(),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Send FRIEND_REQUEST_SEND")
+            Text("Send")
         }
-        Text(
-            text = "Example: {\"type\":\"FRIEND_REQUEST_SEND\", \"receiverId\":2, \"message\":\"Hi!\"}",
-            fontSize = 12.sp,
-            color = Color(0xFF6B7280)
-        )
     }
 }
 
 @Composable
 private fun RequestListCard(
     title: String,
-    subtitle: String,
+    subtitle: String?,
     emptyHint: String,
     requests: List<FriendRequestItem>,
     actionContent: @Composable (FriendRequestItem) -> Unit
@@ -600,7 +550,6 @@ private fun formatTimestamp(timestamp: Long?): String {
 @Preview(showBackground = true)
 @Composable
 fun FriendScreenPreview() {
-    FriendScreen(navController = rememberNavController())
     val sampleState = FriendUiState(
         isConnected = true,
         incomingRequests = listOf(
