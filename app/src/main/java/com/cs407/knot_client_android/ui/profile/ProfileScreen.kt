@@ -15,10 +15,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.animation.core.Animatable
@@ -74,9 +79,31 @@ fun ProfileScreen(
 ) {
     // 为了发 WS、断开 & 清 JWT
     val mainVm = viewModel<com.cs407.knot_client_android.ui.main.MainViewModel>()
+    val profileVm = viewModel<ProfileViewModel>()
     val context = androidx.compose.ui.platform.LocalContext.current
     val tokenStore = remember { com.cs407.knot_client_android.data.local.TokenStore(context) }
     val scope = rememberCoroutineScope()
+    
+    // 收集用户设置数据
+    val userSettings by profileVm.userSettings.collectAsState()
+    val isLoading by profileVm.loading.collectAsState()
+    val error by profileVm.error.collectAsState()
+    
+    // 页面首次显示时加载用户数据
+    LaunchedEffect(Unit) {
+        profileVm.loadUserSettings()
+    }
+    
+    // Snackbar 状态
+    val snackbarHostState = remember { SnackbarHostState() }
+    
+    // 显示错误信息
+    LaunchedEffect(error) {
+        error?.let {
+            snackbarHostState.showSnackbar(it)
+            profileVm.clearError()
+        }
+    }
 
     // Profile 页面内容 - 不再包含导航栏
     Box(
@@ -289,7 +316,11 @@ fun ProfileScreen(
                     
                     // 主按钮层 - 在毛玻璃背景之上，按中心放大
                     Button(
-                        onClick = { /* TODO: 处理编辑事件 */ },
+                        onClick = { 
+                            navController.navigate(Screen.ProfileEdit.route) {
+                                popUpTo(Screen.ProfileEdit.route) { inclusive = true }
+                            }
+                        },
                         modifier = Modifier
                             .scale(editScale.value),
                         colors = ButtonDefaults.buttonColors(
@@ -334,7 +365,7 @@ fun ProfileScreen(
 
             // 🧾 名称
             Text(
-                text = "User Name",
+                text = userSettings?.nickname ?: "N/A",
                 fontSize = 30.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF2D2D33)
@@ -342,7 +373,7 @@ fun ProfileScreen(
             Spacer(modifier = Modifier.height(4.dp))
             // 用户 message
             Text(
-                text = "You haven't set a status message yet!",
+                text = userSettings?.statusMessage ?: "You haven't set a status message yet!",
                 fontSize = 14.sp,
                 color = Color(0xFF5B5B65) // 中等灰色
             )
@@ -364,47 +395,63 @@ fun ProfileScreen(
                     UserInfoItem(
                         icon = Icons.Default.Person,
                         label = "Nickname",
-                        value = "Username"
+                        value = userSettings?.nickname ?: "N/A"
                     )
                     
                     // Email
                     UserInfoItem(
                         icon = Icons.Default.Email,
                         label = "Email",
-                        value = "username@wisc.edu"
+                        value = userSettings?.email ?: "N/A"
                     )
                     
                     // Gender
                     UserInfoItem(
                         icon = Icons.Default.Face,
                         label = "Gender",
-                        value = "FEMALE"
+                        value = userSettings?.gender ?: "N/A"
                     )
                     
                     // Birthday
                     UserInfoItem(
                         icon = Icons.Default.DateRange,
                         label = "Birthday",
-                        value = "NOT_SET"
+                        value = userSettings?.birthdate ?: "N/A"
                     )
                     
                     // Privacy Level
                     UserInfoItem(
                         icon = Icons.Default.Lock,
                         label = "Privacy",
-                        value = "PUBLIC"
+                        value = userSettings?.privacyLevel ?: "N/A"
                     )
                     
                     // Discoverable
                     UserInfoItem(
                         icon = Icons.Default.LocationOn,
                         label = "Discoverable",
-                        value = "TRUE"
+                        value = if (userSettings?.discoverable == true) "TRUE" else "FALSE"
                     )
                 }
             
             }
         }
+        
+        // 加载指示器
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.align(Alignment.Center),
+                color = Color(0xFF636EF1)
+            )
+        }
+        
+        // Snackbar Host
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 16.dp)
+        )
     }
 }
 

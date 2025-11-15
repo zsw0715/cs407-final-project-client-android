@@ -7,18 +7,22 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.cs407.knot_client_android.ui.splash.SplashScreen
 import com.cs407.knot_client_android.ui.login.LoginScreen
 import com.cs407.knot_client_android.ui.main.MainScreen
 import com.cs407.knot_client_android.ui.friend.FriendScreen
 import com.cs407.knot_client_android.ui.debug.DebugScreen
+import com.cs407.knot_client_android.ui.profile.ProfileEditScreen
 
 sealed class Screen(val route: String) {
+    object Splash : Screen("splash")
     object Login : Screen("login")
     object Main : Screen("main/{selectedTab}") {
         fun createRoute(selectedTab: String = "MAP") = "main/$selectedTab"
     }
     object Friend : Screen("friend")
     object Debug : Screen("debug")
+    object ProfileEdit : Screen("profile_edit")
 }
 
 // 主要的 Navigation 设置函数
@@ -28,8 +32,14 @@ fun SetupNavGraph(
 ) {
     NavHost(
         navController = navController,
-        startDestination = Screen.Login.route 
+        startDestination = Screen.Splash.route  // 从启动页开始
     ) {
+        // 启动页
+        composable(route = Screen.Splash.route) {
+            SplashScreen(navController = navController)
+        }
+        
+        // 登录页
         composable(route = Screen.Login.route) {
             LoginScreen(navController = navController)
         }
@@ -53,6 +63,9 @@ fun SetupNavGraph(
         }
         composable(route = Screen.Debug.route) {
             DebugScreen(navController = navController)
+        }
+        composable(route = Screen.ProfileEdit.route) {
+            ProfileEditScreen(navController = navController)
         }
     }
 }

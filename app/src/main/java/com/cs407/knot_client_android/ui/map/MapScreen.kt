@@ -66,9 +66,18 @@ import androidx.compose.material.icons.outlined.Place
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.cs407.knot_client_android.R
-import com.cs407.knot_client_android.data.api.MapboxGeocodingApi
+import com.cs407.knot_client_android.data.api.GeocodingApiService
 import com.cs407.knot_client_android.data.local.MapPreferences
+import com.cs407.knot_client_android.data.model.MapPost
+import com.cs407.knot_client_android.data.model.PostType
+import com.cs407.knot_client_android.data.model.response.MapPostNearby
+import com.cs407.knot_client_android.data.repository.MapPostRepository
+import com.cs407.knot_client_android.ui.components.MapMarker
 import com.cs407.knot_client_android.utils.LocationManager
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.CircularProgressIndicator
 import com.mapbox.geojson.Point
 import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.MapInitOptions
@@ -77,33 +86,275 @@ import com.mapbox.maps.extension.compose.MapboxMap
 import com.mapbox.maps.extension.compose.animation.viewport.rememberMapViewportState
 import com.mapbox.maps.extension.compose.annotation.ViewAnnotation
 import com.mapbox.maps.extension.compose.style.MapStyle
+import com.mapbox.maps.extension.compose.annotation.generated.PointAnnotationGroup
+import com.mapbox.maps.plugin.annotation.AnnotationConfig
+import com.mapbox.maps.plugin.annotation.AnnotationSourceOptions
+import com.mapbox.maps.plugin.annotation.ClusterOptions
+import com.mapbox.maps.plugin.annotation.generated.PointAnnotationOptions
+import com.mapbox.maps.extension.style.expressions.dsl.generated.literal
+import com.mapbox.maps.extension.style.expressions.generated.Expression
+import android.graphics.Color as AndroidColor
 import com.mapbox.maps.plugin.animation.MapAnimationOptions
 import com.mapbox.maps.viewannotation.geometry
 import com.mapbox.maps.viewannotation.viewAnnotationOptions
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.cs407.knot_client_android.ui.main.MainViewModel
+import com.cs407.knot_client_android.data.model.WebSocketMessage
+import com.cs407.knot_client_android.data.model.MapPostNewMessage
+import com.cs407.knot_client_android.data.model.MessageNewMessage
+import com.google.gson.Gson
 
 @Composable
 fun MapScreen(
-    navController: NavHostController
+    navController: NavHostController,
+    mainViewModel: MainViewModel,
+    onPostSelected: (MapPostNearby) -> Unit = {}
 ) {
     val context = LocalContext.current
     val locationManager = remember { LocationManager(context) }
     val mapPreferences = remember { MapPreferences(context) }
     val scope = rememberCoroutineScope()
     
+    // API Repository
+    val mapPostRepository = remember { 
+        MapPostRepository(context, "http://10.0.2.2:8080") 
+    }
+    
+    // ⚡ 静态标志：地图直接显示，无动画
+    // 因为地图会在 MainScreen 加载时就开始初始化
+    // 当用户看到时，地图已经准备好了
+    var showMarkers by remember { mutableStateOf(false) }
+    
+    // 为每个 marker 单独管理显示状态，用于动画（使用 Set 来追踪已显示的 marker）
+    var visibleMarkerIds by remember { mutableStateOf(setOf<Long>()) }
+    
+    // 地图帖子数据状态 - 使用 Map 进行本地缓存和去重
+    var mapPostsCache by remember { mutableStateOf<Map<Long, MapPostNearby>>(emptyMap()) }
+    val mapPosts: List<MapPostNearby> by remember { derivedStateOf { mapPostsCache.values.toList() } }
+    var isLoadingPosts by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    
     // 位置状态
     var userLocation by remember { mutableStateOf<Point?>(null) }
     var hasPermission by remember { mutableStateOf(locationManager.hasLocationPermission()) }
     var centerLocationName by remember { mutableStateOf<String?>(null) }
     
+    // // 假数据：多个地图帖子（在 Mountain View 区域）
+    // val mockMapPosts = remember {
+    //     listOf(
+    //         MapPost(
+    //             mapPostId = 1,
+    //             convId = 101,
+    //             creatorId = 1001,
+    //             title = "Best Coffee ☕",
+    //             description = "Amazing latte art and cozy atmosphere!",
+    //             mediaJson = listOf("url1", "url2"),
+    //             locLat = 37.422,
+    //             locLng = -122.084,
+    //             locName = "Google Play Store",
+    //             geohash = "9q9hvnf",
+    //             viewCount = 156,
+    //             likeCount = 42,
+    //             commentCount = 8,
+    //             status = 1,
+    //             createdAt = "2024-11-09T10:30:00Z",
+    //             postType = PostType.ALL
+    //         ),
+    //         MapPost(
+    //             mapPostId = 2,
+    //             convId = 102,
+    //             creatorId = 1002,
+    //             title = "Tech Meetup 🚀",
+    //             description = "Weekly tech talks and networking",
+    //             mediaJson = null,
+    //             locLat = 37.425,
+    //             locLng = -122.088,
+    //             locName = "Mountain View Library",
+    //             geohash = "9q9hvng",
+    //             viewCount = 89,
+    //             likeCount = 27,
+    //             commentCount = 15,
+    //             status = 1,
+    //             createdAt = "2024-11-09T14:15:00Z",
+    //             postType = PostType.REQUEST
+    //         ),
+    //         MapPost(
+    //             mapPostId = 3,
+    //             convId = 103,
+    //             creatorId = 1003,
+    //             title = "Yoga Class 🧘",
+    //             description = "Morning yoga sessions every weekend",
+    //             mediaJson = listOf("url3"),
+    //             locLat = 37.427,
+    //             locLng = -122.086,
+    //             locName = "Shoreline Park",
+    //             geohash = "9q9hvnh",
+    //             viewCount = 234,
+    //             likeCount = 68,
+    //             commentCount = 22,
+    //             status = 1,
+    //             createdAt = "2024-11-09T08:00:00Z",
+    //             postType = PostType.ALL
+    //         ),
+    //         MapPost(
+    //             mapPostId = 4,
+    //             convId = 104,
+    //             creatorId = 1004,
+    //             title = "Food Truck 🌮",
+    //             description = "Best tacos in town!",
+    //             mediaJson = null,
+    //             locLat = 37.423,
+    //             locLng = -122.090,
+    //             locName = "Castro Street",
+    //             geohash = "9q9hvne",
+    //             viewCount = 312,
+    //             likeCount = 95,
+    //             commentCount = 41,
+    //             status = 1,
+    //             createdAt = "2024-11-09T12:00:00Z",
+    //             postType = PostType.ALL
+    //         ),
+    //         MapPost(
+    //             mapPostId = 5,
+    //             convId = 105,
+    //             creatorId = 1005,
+    //             title = "Book Club 📚",
+    //             description = "Monthly book discussions",
+    //             mediaJson = listOf("url4", "url5"),
+    //             locLat = 37.420,
+    //             locLng = -122.082,
+    //             locName = "Public Library",
+    //             geohash = "9q9hvnc",
+    //             viewCount = 145,
+    //             likeCount = 38,
+    //             commentCount = 19,
+    //             status = 1,
+    //             createdAt = "2024-11-09T16:30:00Z",
+    //             postType = PostType.REQUEST
+    //         ),
+    //         MapPost(
+    //             mapPostId = 6,
+    //             convId = 106,
+    //             creatorId = 1006,
+    //             title = "Art Gallery 🎨",
+    //             description = "Local artists exhibition",
+    //             mediaJson = null,
+    //             locLat = 37.428,
+    //             locLng = -122.089,
+    //             locName = "Art Center",
+    //             geohash = "9q9hvni",
+    //             viewCount = 198,
+    //             likeCount = 52,
+    //             commentCount = 28,
+    //             status = 1,
+    //             createdAt = "2024-11-09T13:45:00Z",
+    //             postType = PostType.ALL
+    //         ),
+    //         MapPost(
+    //             mapPostId = 7,
+    //             convId = 107,
+    //             creatorId = 1007,
+    //             title = "Bike Repair 🚴",
+    //             description = "Free bike maintenance workshop",
+    //             mediaJson = listOf("url6"),
+    //             locLat = 37.419,
+    //             locLng = -122.085,
+    //             locName = "Community Center",
+    //             geohash = "9q9hvnb",
+    //             viewCount = 167,
+    //             likeCount = 44,
+    //             commentCount = 13,
+    //             status = 1,
+    //             createdAt = "2024-11-09T09:15:00Z",
+    //             postType = PostType.REQUEST
+    //         ),
+    //         MapPost(
+    //             mapPostId = 8,
+    //             convId = 108,
+    //             creatorId = 1008,
+    //             title = "Live Music 🎵",
+    //             description = "Jazz night every Friday",
+    //             mediaJson = null,
+    //             locLat = 37.426,
+    //             locLng = -122.091,
+    //             locName = "Music Venue",
+    //             geohash = "9q9hvnj",
+    //             viewCount = 276,
+    //             likeCount = 82,
+    //             commentCount = 35,
+    //             status = 1,
+    //             createdAt = "2024-11-09T18:00:00Z",
+    //             postType = PostType.ALL
+    //         )
+    //     )
+    // }
+    
+    // 跟踪当前的 zoom 级别（用于控制 cluster/detail 切换）
+    var currentZoom by remember { mutableStateOf(7.0) }
+    
     // 创建 Geocoding API (用于反向地理编码)
     val mapboxToken = context.getString(R.string.mapbox_access_token)
-    val geocodingApi = remember { MapboxGeocodingApi.create() }
+    val geocodingApi = remember { GeocodingApiService.create() }
     
     // 用于节流的 Job
     var geocodingJob by remember { mutableStateOf<Job?>(null) }
+    var fetchPostsJob by remember { mutableStateOf<Job?>(null) }
+    
+    // 加载附近帖子的函数（带节流）- 使用 V2 API（基于 radius）
+    fun fetchNearbyPosts(lat: Double, lng: Double, zoom: Double) {
+        // 取消之前的请求
+        fetchPostsJob?.cancel()
+        
+        
+        // 1.5 秒节流
+        fetchPostsJob = scope.launch {
+            delay(1500) // 1.5 秒延迟
+            
+            try {
+                isLoadingPosts = true
+                errorMessage = null
+                
+                // 使用 V2 API（基于 radius，小数据集优化）
+                val posts = mapPostRepository.getNearbyPostsV2(
+                    lat = lat,
+                    lng = lng,
+                    radius = 500000,         // 固定 500000m 半径
+                    timeRange = "7D",      // 固定 7 天（可配置）
+                    postType = "ALL",      // 固定 ALL 类型（可配置）
+                    maxResults = 200       // 固定 200 条
+                )
+                
+                // 合并新数据到缓存（去重）
+                val updatedCache = mapPostsCache.toMutableMap()
+                val newPostIds = mutableListOf<Long>()
+                
+                posts.forEach { post ->
+                    if (!updatedCache.containsKey(post.mapPostId)) {
+                        updatedCache[post.mapPostId] = post
+                        newPostIds.add(post.mapPostId)
+                    }
+                }
+                
+                mapPostsCache = updatedCache
+                showMarkers = true
+                
+                // 依次显示新的 marker（带动画）
+                newPostIds.forEach { postId ->
+                    delay(80L) // 每个 marker 间隔 80ms
+                    visibleMarkerIds = visibleMarkerIds + postId
+                }
+                
+            } catch (e: Exception) {
+                errorMessage = e.message ?: "加载帖子失败"
+                snackbarHostState.showSnackbar(errorMessage!!)
+            } finally {
+                isLoadingPosts = false
+            }
+        }
+    }
     
     // 地图视口状态 - 使用上次保存的位置
     val mapViewportState = rememberMapViewportState {
@@ -115,6 +366,94 @@ fun MapScreen(
             ))
             pitch(0.0)
             bearing(0.0)
+        }
+    }
+    
+    // ⚡ 首次加载地图帖子（用户位置获取后）
+    LaunchedEffect(userLocation) {
+        userLocation?.let { location ->
+            // 等待一下地图初始化
+            delay(800)
+            // 使用用户位置或地图中心加载帖子
+            val center = mapViewportState.cameraState?.center ?: location
+            val zoom = mapViewportState.cameraState?.zoom ?: 15.0
+            fetchNearbyPosts(center.latitude(), center.longitude(), zoom)
+        }
+    }
+    
+    // 🔔 监听 WebSocket 消息（实时推送新帖子 + 更新统计数据）
+    LaunchedEffect(Unit) {
+        mainViewModel.wsManager.rawMessages.collect { message ->
+            message?.let {
+                try {
+                    // 解析消息类型
+                    val gson = Gson()
+                    val baseMessage = gson.fromJson(it, WebSocketMessage::class.java)
+                    
+                    when (baseMessage.type) {
+                        "MAP_POST_NEW" -> {
+                            // 解析完整消息
+                            val mapPostNew = gson.fromJson(it, MapPostNewMessage::class.java)
+                            
+                            // 转换为 MapPostNearby 格式
+                            val newPost = MapPostNearby(
+                                mapPostId = mapPostNew.mapPostId,
+                                convId = mapPostNew.convId,
+                                title = mapPostNew.title,
+                                description = mapPostNew.description,
+                                mediaUrls = mapPostNew.mediaUrls,
+                                locLat = mapPostNew.loc.lat,
+                                locLng = mapPostNew.loc.lng,
+                                locName = mapPostNew.loc.name,
+                                distance = 0.0,  // 暂时设置为 0
+                                creatorId = mapPostNew.creatorId,
+                                creatorUsername = mapPostNew.creatorUsername,
+                                creatorAvatar = mapPostNew.creatorAvatar,
+                                viewCount = 0,
+                                likeCount = 0,
+                                commentCount = 0,
+                                postType = "ALL",
+                                createdAtMs = mapPostNew.createdAtMs
+                            )
+                            
+                            // 添加到缓存（去重）
+                            if (!mapPostsCache.containsKey(newPost.mapPostId)) {
+                                mapPostsCache = mapPostsCache + (newPost.mapPostId to newPost)
+                                
+                                // 延迟一下，然后显示动画
+                                delay(300)
+                                visibleMarkerIds = visibleMarkerIds + newPost.mapPostId
+                                
+                                // 显示提示
+                                snackbarHostState.showSnackbar("🎉 ${mapPostNew.creatorUsername} 发布了新帖子！")
+                            }
+                        }
+                        
+                        "MSG_NEW" -> {
+                            // 新评论消息 - 更新对应帖子的 commentCount
+                            val msgNew = gson.fromJson(it, MessageNewMessage::class.java)
+                            
+                            // 查找对应的帖子（通过 convId）
+                            val targetPost = mapPostsCache.values.find { post -> 
+                                post.convId == msgNew.convId 
+                            }
+                            
+                            targetPost?.let { post ->
+                                // 创建更新后的帖子（commentCount +1）
+                                val updatedPost = post.copy(
+                                    commentCount = post.commentCount + 1
+                                )
+                                
+                                // 更新缓存
+                                mapPostsCache = mapPostsCache + (post.mapPostId to updatedPost)
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    // 忽略解析错误
+                    e.printStackTrace()
+                }
+            }
         }
     }
     
@@ -135,6 +474,8 @@ fun MapScreen(
                         cameraOptions = CameraOptions.Builder()
                             .center(point)
                             .zoom(15.0)
+                            .bearing(0.0)  // 旋转到正北方向
+                            .pitch(0.0)    // 重置倾斜角度
                             .build(),
                         animationOptions = MapAnimationOptions.mapAnimationOptions {
                             duration(1500) // 1.5秒的平滑动画
@@ -174,6 +515,8 @@ fun MapScreen(
                     cameraOptions = CameraOptions.Builder()
                         .center(point)
                         .zoom(15.0)
+                        .bearing(0.0)  // 旋转到正北方向
+                        .pitch(0.0)    // 重置倾斜角度
                         .build(),
                     animationOptions = MapAnimationOptions.mapAnimationOptions {
                         duration(1500) // 1.5秒的平滑动画
@@ -183,10 +526,13 @@ fun MapScreen(
         }
     }
     
-    // 监听地图中心和缩放变化，获取中心点地名 + 保存位置
+    // 监听地图中心和缩放变化，获取中心点地名 + 保存位置 + 加载附近帖子
     LaunchedEffect(mapViewportState.cameraState) {
         val zoom = mapViewportState.cameraState?.zoom ?: return@LaunchedEffect
         val center = mapViewportState.cameraState?.center ?: return@LaunchedEffect
+        
+        // 更新当前 zoom 级别（用于控制 cluster/detail 显示）
+        currentZoom = zoom
         
         // 取消之前的请求（节流）
         geocodingJob?.cancel()
@@ -231,10 +577,15 @@ fun MapScreen(
                 centerLocationName = null
             }
         }
+        
+        // 🔄 加载附近的帖子（使用 1.5秒 节流）
+        fetchNearbyPosts(center.latitude(), center.longitude(), zoom)
     }
     
+    // ⚡ 直接显示地图，无动画
+    // 地图会在 MainScreen 加载时就开始初始化
     Box(modifier = Modifier.fillMaxSize()) {
-        // 地图内容 - 使用 MapStyle
+        // 地图内容 - 使用 MapStyle + PointAnnotationGroup Clustering
         MapboxMap(
             modifier = Modifier.fillMaxSize(),
             mapViewportState = mapViewportState,
@@ -316,6 +667,116 @@ fun MapScreen(
                                 .border(4.dp, Color.White, CircleShape)
                                 .background(Color(0xFF4A90E2), CircleShape)
                         )
+                    }
+                }
+            }
+            
+            // Mapbox 原生 Clustering：zoom ≤ 13 时显示蓝色聚合圆圈
+            if (showMarkers && currentZoom <= 13.0 && mapPosts.isNotEmpty()) {
+                PointAnnotationGroup(
+                    annotations = mapPosts.map { post ->
+                        PointAnnotationOptions()
+                            .withPoint(Point.fromLngLat(post.locLng, post.locLat))
+                    },
+                    annotationConfig = AnnotationConfig(
+                        annotationSourceOptions = AnnotationSourceOptions(
+                            clusterOptions = ClusterOptions(
+                                // Cluster 圆圈颜色：统一蓝色
+                                colorLevels = listOf(
+                                    Pair(0, AndroidColor.rgb(76, 144, 226))  // 蓝色
+                                ),
+                                // Cluster 文字颜色
+                                textColorExpression = Expression.color(AndroidColor.WHITE),
+                                // Cluster 文字大小
+                                textSize = 14.0,
+                                // Cluster 圆圈半径
+                                circleRadiusExpression = literal(25.0),
+                                // 聚合半径
+                                clusterRadius = 50L,
+                                // 最大聚合的 zoom 级别（13 以下都会 cluster）
+                                clusterMaxZoom = 13L
+                            )
+                        )
+                    )
+                ) {
+                    // 点击 cluster 时，放大到 zoom 13.5 并移动到 cluster 位置
+                    // interactionsState.onClusterClicked { cluster ->
+                    //     scope.launch {
+                    //         // 从 annotatedFeature 获取几何信息
+                    //         val geometry = cluster.annotatedFeature.feature.geometry()
+                    //         if (geometry is Point) {
+                    //             mapViewportState.easeTo(
+                    //                 cameraOptions = CameraOptions.Builder()
+                    //                     .center(geometry)  // 移动到 cluster 中心
+                    //                     .zoom(13.5)  // 放大到 13.5，刚好能看到详细卡片
+                    //                     .build(),
+                    //                 animationOptions = MapAnimationOptions.mapAnimationOptions {
+                    //                     duration(800)  // 800ms 的平滑动画
+                    //                 }
+                    //             )
+                    //         }
+                    //     }
+                    //     true  // 消费事件
+                    // }
+                    interactionsState.onClusterClicked { cluster ->
+                        // 拿到聚类点的中心坐标
+                        val point = cluster.originalFeature.geometry() as? com.mapbox.geojson.Point
+                        if (point != null) {
+                            // 放大到能分裂的一个经验 zoom（13.5~14.5 之间看你的数据分布）
+                            mapViewportState.easeTo(
+                                cameraOptions = CameraOptions.Builder()
+                                    .center(point)
+                                    .zoom(13.8) // 你原来用 13.5 也行
+                                    .bearing(0.0)  // 旋转到正北方向
+                                    .pitch(0.0)    // 重置倾斜角度
+                                    .build(),
+                                animationOptions = MapAnimationOptions.mapAnimationOptions {
+                                    duration(1800)
+                                }
+                            )
+                        }
+                        true // 消费点击
+                    }
+                }
+            }
+            
+            // ViewAnnotation 详细卡片：zoom > 13 时显示
+            if (showMarkers && currentZoom > 13.0 && mapPosts.isNotEmpty()) {
+                mapPosts.forEach { post ->
+                    // 只渲染已经设置为可见的 markers
+                    if (visibleMarkerIds.contains(post.mapPostId)) {
+                        ViewAnnotation(
+                            options = viewAnnotationOptions {
+                                geometry(Point.fromLngLat(post.locLng, post.locLat))
+                            }
+                        ) {
+                            // 使用 scale 动画来实现进入效果
+                            val scale = remember { Animatable(0.7f) }
+                            
+                            LaunchedEffect(Unit) {
+                                scale.animateTo(
+                                    targetValue = 1f,
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessMedium
+                                    )
+                                )
+                            }
+                            
+                            Box(
+                                modifier = Modifier
+                                    .scale(scale.value)
+                                    .alpha(scale.value)
+                            ) {
+                                MapMarker(
+                                    post = post,
+                                    onClick = {
+                                        // 点击 marker 后通知 MainScreen 打开帖子详情 Sheet
+                                        onPostSelected(post)
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -494,6 +955,8 @@ fun MapScreen(
                                             cameraOptions = CameraOptions.Builder()
                                                 .center(location)
                                                 .zoom(15.0)
+                                                .bearing(0.0)  // 旋转到正北方向
+                                                .pitch(0.0)    // 重置倾斜角度
                                                 .build(),
                                             animationOptions = MapAnimationOptions.mapAnimationOptions {
                                                 duration(2500) // 2.5秒的平滑动画
@@ -522,6 +985,21 @@ fun MapScreen(
             }
         }
         
+        // DEBUG: 显示 zoom 级别和 marker 模式 DO NOT DELETE THIS CODE
+        // Text(
+        //     text = "Zoom: ${"%.1f".format(currentZoom)} | ${if (currentZoom > 13.0) "Details" else "Clusters"}",
+        //     modifier = Modifier
+        //         .align(Alignment.BottomStart)
+        //         .padding(16.dp)
+        //         .background(
+        //             color = Color.White.copy(alpha = 0.9f),
+        //             shape = RoundedCornerShape(8.dp)
+        //         )
+        //         .padding(horizontal = 12.dp, vertical = 6.dp),
+        //     color = Color.Black,
+        //     fontSize = 12.sp
+        // )
+        
         // DEBUG: DO NOT DELETE THIS CODE
         // // 显示当前位置信息（调试用）- 白色半透明背景
         // userLocation?.let { location ->
@@ -539,11 +1017,38 @@ fun MapScreen(
         //         fontSize = 12.sp
         //     )
         // }
+        
+        // Loading Indicator - 左上角
+        if (isLoadingPosts) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = 16.dp, top = 70.dp)
+                    .size(24.dp)
+                    .background(Color.White.copy(alpha = 0.9f), CircleShape)
+                    .padding(4.dp)
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.fillMaxSize(),
+                    color = Color(0xFF4C90E2),
+                    strokeWidth = 2.dp
+                )
+            }
+        }
+        
+        // Snackbar Host - 底部
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 100.dp)
+        )
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun MapScreenPreview() {
-    MapScreen(navController = rememberNavController())
-}
+// Preview 需要 MainViewModel，暂时禁用
+//@Preview(showBackground = true)
+//@Composable
+//fun MapScreenPreview() {
+//    MapScreen(navController = rememberNavController())
+//}
