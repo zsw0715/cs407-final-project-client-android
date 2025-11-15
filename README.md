@@ -59,10 +59,16 @@
 
 
 ### Codebase Maintenance
-- Merged branch `Xiangyi_c2` → `main`  
+- Merged branch `Xiangyi_c2` → `main`
 - Merged branch `Shenwei_user_profile` → `main`  
-  - All conflicts resolved by **keeping the version from `Shenwei_user_profile`**  
+  - All conflicts resolved by **keeping the version from `Shenwei_user_profile`**
+- Merged branch `Enhui_Friend` → `main`
+- Merged branch `Liye_IntegratedChat` → `main`
+- Merged branch `Shenwei_map_feature` → `main`
+- Merged branch `Merge_liyue_enhui` → `main`
+- Merged branch `Merge_liyue_shenwei` → `main`
 - Added and updated README on `main`
+
 
 ---
 
