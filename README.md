@@ -67,7 +67,7 @@
 ---
 
 ## 4. Next Steps
-- Integrate frontend with backend APIs (Retrofit)  
+- Integrate frontend with backend APIs (Retrofit)  (Xiangyi is still working on integrate add post feature)
 - Add real-time messaging and friend updates using WebSocket  
 - Implement avatar picker & full profile edit screen  
 - Integrate map feature into main navigation flow  
