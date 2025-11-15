@@ -94,24 +94,17 @@ fun SetupNavGraph(
             val title = backStackEntry.arguments?.getString("title") ?: "Chat"
 
             // 从 NavGraph 作用域拿到 MainViewModel（里面有 WebSocket）
-            //val mainVm: MainViewModel = viewModel()
             val mainBackStackEntry = remember(backStackEntry) {
                 navController.getBackStackEntry(Screen.Main.route)
             }
             val mainVm: MainViewModel = viewModel(mainBackStackEntry)
 
-            // TODO: 把当前用户 id 换成真实的（可以从 TokenStore 里取）
-            //val myUid = 2L
+            // 当前用户 id，优先从 TokenStore 获取，没有就用 0 兜底保证页面能正常展示
             val context = LocalContext.current
             val tokenStore = remember(context.applicationContext) {
                 TokenStore(context.applicationContext)
             }
-
-            val myUid = tokenStore.getUserId()
-            if (myUid == null) {
-                Log.w("NavGraph", "Missing user id in TokenStore, skip entering chat detail")
-                return@composable
-            }
+            val myUid: Long = tokenStore.getUserId() ?: 0L
 
             ChatDetailRoute(
                 navController = navController,
