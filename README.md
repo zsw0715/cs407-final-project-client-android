@@ -6,7 +6,7 @@
 | Week | Coordinator | Observer |
 |------|-------------|-----------|
 | **Week 1 (Last week)** | Xiangyi Peng | Shenwei Zhang |
-| **Week 2 (This week)** | Enhui Zhao | Liye Fu |
+| **Week 2 (This week)** | Liye Fu | Enhui Zhao |
 
 ---
 
