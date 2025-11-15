@@ -29,6 +29,8 @@ import com.cs407.knot_client_android.navigation.Screen
 import com.cs407.knot_client_android.ui.friend.FriendScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
+import com.cs407.knot_client_android.ui.chat.ChatRoute
 
 
 @Composable
@@ -108,8 +110,15 @@ fun MainScreen(
         }
         
         // Chat 页面 - 永远存在，但可能不可见
+//        if (selectedTab == NavTab.CHAT) {
+//            ChatScreen(navController)
+//        }
         if (selectedTab == NavTab.CHAT) {
-            ChatScreen(navController)
+            ChatRoute(
+                navController = navController,
+                appContext = LocalContext.current,
+                baseUrl = "http://10.0.2.2:8080/" // 模拟器访问本机；真机请换成电脑局域网 IP
+            )
         }
         
         // Profile 页面 - 永远存在，但可能不可见

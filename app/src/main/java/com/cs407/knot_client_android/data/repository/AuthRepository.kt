@@ -22,7 +22,13 @@ class AuthRepository(context: Context, baseUrl: String) {
     suspend fun login(username: String, password: String) {
         val response = apiService.login(LoginRequest(username, password))
         if (response.success && response.data != null) {
-            tokenStore.save(response.data.accessToken, response.data.refreshToken)
+            // 同时保存用户 ID 和用户名，方便聊天等功能使用
+            tokenStore.save(
+                accessToken = response.data.accessToken,
+                refreshToken = response.data.refreshToken,
+                userId = response.data.userId?.toLong(),
+                username = response.data.username
+            )
         } else {
             error(response.message ?: "Login failed")
         }
@@ -63,7 +69,12 @@ class AuthRepository(context: Context, baseUrl: String) {
             
             val response = apiService.refreshToken(RefreshTokenRequest(refreshToken))
             if (response.success && response.data != null) {
-                tokenStore.save(response.data.accessToken, response.data.refreshToken)
+                tokenStore.save(
+                    accessToken = response.data.accessToken,
+                    refreshToken = response.data.refreshToken,
+                    userId = response.data.userId?.toLong(),
+                    username = response.data.username
+                )
                 true
             } else {
                 false
