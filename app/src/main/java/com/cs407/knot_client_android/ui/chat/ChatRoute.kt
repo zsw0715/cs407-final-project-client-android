@@ -3,10 +3,9 @@ package com.cs407.knot_client_android.ui.chat
 import android.content.Context
 import androidx.compose.runtime.*
 import androidx.navigation.NavHostController
-import androidx.navigation.compose.rememberNavController
 import com.cs407.knot_client_android.data.api.ConversationApi
 import com.cs407.knot_client_android.data.local.TokenStore
-import kotlinx.coroutines.flow.collectLatest
+import com.cs407.knot_client_android.navigation.Screen
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
@@ -14,9 +13,8 @@ import retrofit2.converter.gson.GsonConverterFactory
 fun ChatRoute(
     navController: NavHostController,
     appContext: Context,
-    baseUrl: String = "http://10.0.2.2:8080" // 改成你的
+    baseUrl: String = "http://10.0.2.2:8080/"
 ) {
-    // 轻量创建 Retrofit + Api
     val api = remember(baseUrl) {
         Retrofit.Builder()
             .baseUrl(baseUrl)
@@ -26,9 +24,18 @@ fun ChatRoute(
     }
     val vm = remember { ChatViewModel(api, TokenStore(appContext)) }
 
-    // 拉取数据
     LaunchedEffect(Unit) { vm.load() }
 
     val state by vm.ui.collectAsState()
-    ChatScreen(navController = navController, state = state)
+
+    ChatScreen(
+        navController = navController,
+        state = state,
+        onOpenConversation = { conv ->
+            // 跳转到聊天详情页，把 convId 和 title 传过去
+            navController.navigate(
+                Screen.ChatDetail.createRoute(conv.id, conv.displayTitle)
+            )
+        }
+    )
 }

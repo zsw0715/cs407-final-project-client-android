@@ -11,6 +11,10 @@ import com.cs407.knot_client_android.ui.login.LoginScreen
 import com.cs407.knot_client_android.ui.main.MainScreen
 import com.cs407.knot_client_android.ui.friend.FriendScreen
 import com.cs407.knot_client_android.ui.debug.DebugScreen
+import android.net.Uri
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.cs407.knot_client_android.ui.chat.ChatDetailRoute
+import com.cs407.knot_client_android.ui.main.MainViewModel
 
 sealed class Screen(val route: String) {
     object Login : Screen("login")
@@ -19,6 +23,14 @@ sealed class Screen(val route: String) {
     }
     object Friend : Screen("friend")
     object Debug : Screen("debug")
+
+    object ChatDetail : Screen("chat/{convId}/{title}") {
+        fun createRoute(convId: Long, title: String): String {
+            // title 里可能有空格/中文，要编码一下
+            val encoded = Uri.encode(title)
+            return "chat/$convId/$encoded"
+        }
+    }
 }
 
 // 主要的 Navigation 设置函数
@@ -53,6 +65,30 @@ fun SetupNavGraph(
         }
         composable(route = Screen.Debug.route) {
             DebugScreen(navController = navController)
+        }
+        composable(
+            route = Screen.ChatDetail.route,
+            arguments = listOf(
+                navArgument("convId") { type = NavType.LongType },
+                navArgument("title") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val convId = backStackEntry.arguments?.getLong("convId")!!
+            val title = backStackEntry.arguments?.getString("title") ?: "Chat"
+
+            // 从 NavGraph 作用域拿到 MainViewModel（里面有 WebSocket）
+            val mainVm: MainViewModel = viewModel()
+
+            // TODO: 把当前用户 id 换成真实的（可以从 TokenStore 里取）
+            val myUid = 2L
+
+            ChatDetailRoute(
+                navController = navController,
+                convId = convId,
+                title = title,
+                myUid = myUid,
+                mainVm = mainVm
+            )
         }
     }
 }
