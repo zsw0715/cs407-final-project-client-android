@@ -304,7 +304,7 @@ fun ExpandableBottomSheet(
                                 shape = RoundedCornerShape(32.dp),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     unfocusedBorderColor = Color(0xFFE0E0E0),
-                                    focusedBorderColor = Color(0xFFB5A8FF), // 淡紫色
+                                        focusedBorderColor = Color(0xFFB5A8FF), // 淡紫色
                                     unfocusedContainerColor = Color.White.copy(alpha = 0.8f),
                                     focusedContainerColor = Color.White
                                 ),
