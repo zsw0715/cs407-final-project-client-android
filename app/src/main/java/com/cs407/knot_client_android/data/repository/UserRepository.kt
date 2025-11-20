@@ -32,6 +32,11 @@ class UserRepository(context: Context, baseUrl: String) {
         }
     }
 
+    /**
+     * 更新用户设置
+     * @param request 更新请求体
+     * @return 更新后的 UserSettings
+     */
     suspend fun updateUserSettings(request: UpdateUserSettingsRequest): UserSettings? {
         val accessToken = tokenStore.getAccessToken()
         if (accessToken.isNullOrEmpty()) {

@@ -22,6 +22,11 @@ import com.cs407.knot_client_android.data.local.TokenStore
 import com.cs407.knot_client_android.ui.chat.ChatDetailRoute
 import com.cs407.knot_client_android.ui.main.MainViewModel
 
+/**
+ * 定义应用的导航图
+ * 注意！这里的是单独导航，而mapscreen，chatscreen，profilescreen等页面内的tab导航
+ * 是在它们各自的文件里定义的
+ */
 sealed class Screen(val route: String) {
     object Splash : Screen("splash")
     object Login : Screen("login")

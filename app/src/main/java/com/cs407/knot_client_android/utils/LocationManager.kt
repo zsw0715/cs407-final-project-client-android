@@ -14,6 +14,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 
+/**
+ * 位置管理器
+ * 提供获取当前位置和位置更新的功能
+ */
 class LocationManager(private val context: Context) {
     private val fusedLocationClient: FusedLocationProviderClient = 
         LocationServices.getFusedLocationProviderClient(context)

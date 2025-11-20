@@ -11,6 +11,7 @@ import retrofit2.http.Body
  * 用户 API 服务接口
  */
 interface UserApiService {
+
     /**
      * 获取用户设置
      * @param authorization Bearer token
@@ -20,10 +21,16 @@ interface UserApiService {
         @Header("Authorization") authorization: String
     ): UserSettingsResponse
 
+    /**
+     * 更新用户设置
+     * @param authorization Bearer token
+     * @param request 更新请求体
+     */
     @PUT("/api/user/settings")
     suspend fun updateUserSettings(
         @Header("Authorization") authorization: String,
         @Body request: UpdateUserSettingsRequest
     ): UserSettingsResponse
+
 }
 

@@ -63,8 +63,26 @@ object RetrofitProvider {
 
     /**
      * 创建 Geocoding API 服务
+     * @param baseUrl Mapbox API 地址，默认为 https://api.mapbox.com/
      */
-    fun createGeocodingService(): GeocodingApiService {
-        return GeocodingApiService.create()
+    fun createGeocodingService(baseUrl: String = "https://api.mapbox.com/"): GeocodingApiService {
+        return Retrofit.Builder()
+            .baseUrl(baseUrl)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(GeocodingApiService::class.java)
+    }
+
+    /**
+     * 创建消息 API 服务
+     * @param baseUrl 后端地址，模拟器使用 http://10.0.2.2:8080
+     */
+    fun createMessageService(baseUrl: String): MessageApi {
+        return Retrofit.Builder()
+            .baseUrl(baseUrl)
+            .client(createLoggingClient())
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(MessageApi::class.java)
     }
 }

@@ -66,7 +66,7 @@ import androidx.compose.material.icons.outlined.Place
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.cs407.knot_client_android.R
-import com.cs407.knot_client_android.data.api.GeocodingApiService
+import com.cs407.knot_client_android.data.api.RetrofitProvider
 import com.cs407.knot_client_android.data.local.MapPreferences
 import com.cs407.knot_client_android.data.model.MapPost
 import com.cs407.knot_client_android.data.model.PostType
@@ -308,7 +308,7 @@ fun MapScreen(
 
     // 创建 Geocoding API (用于反向地理编码)
     val mapboxToken = context.getString(R.string.mapbox_access_token)
-    val geocodingApi = remember { GeocodingApiService.create() }
+    val geocodingApi = remember { RetrofitProvider.createGeocodingService() }
     
     // 用于节流的 Job
     var geocodingJob by remember { mutableStateOf<Job?>(null) }

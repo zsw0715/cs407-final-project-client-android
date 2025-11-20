@@ -1,7 +1,7 @@
 package com.cs407.knot_client_android.ui.chat
 
-import com.cs407.knot_client_android.data.api.ConversationDto
-import com.cs407.knot_client_android.data.api.ConversationListResp
+import com.cs407.knot_client_android.data.model.response.ConversationDto
+import com.cs407.knot_client_android.data.model.response.ConversationListResp
 
 // UI 模型
 data class ConversationUi(
