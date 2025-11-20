@@ -124,20 +124,20 @@ fun MapScreen(
     val mapPreferences = remember { MapPreferences(context) }
     val scope = rememberCoroutineScope()
     val uiState by mapViewModel.uiState.collectAsState()
-    
+
     // API Repository
-    val mapPostRepository = remember { 
-        MapPostRepository(context, "http://10.0.2.2:8080") 
+    val mapPostRepository = remember {
+        MapPostRepository(context, "http://10.0.2.2:8080")
     }
-    
+
     // ⚡ 静态标志：地图直接显示，无动画
     // 因为地图会在 MainScreen 加载时就开始初始化
     // 当用户看到时，地图已经准备好了
     var showMarkers by remember { mutableStateOf(false) }
-    
+
     // 为每个 marker 单独管理显示状态，用于动画（使用 Set 来追踪已显示的 marker）
     var visibleMarkerIds by remember { mutableStateOf(setOf<Long>()) }
-    
+
     // 地图帖子数据状态 - 使用 Map 进行本地缓存和去重
     var mapPostsCache by remember { mutableStateOf<Map<Long, MapPostNearby>>(emptyMap()) }
 //    val mapPosts: List<MapPostNearby> by remember { derivedStateOf { mapPostsCache.values.toList() } }
@@ -302,10 +302,10 @@ fun MapScreen(
     //         )
     //     )
     // }
-    
+
     // 跟踪当前的 zoom 级别（用于控制 cluster/detail 切换）
     var currentZoom by remember { mutableStateOf(7.0) }
-    
+
     // 创建 Geocoding API (用于反向地理编码)
     val mapboxToken = context.getString(R.string.mapbox_access_token)
     val geocodingApi = remember { GeocodingApiService.create() }
@@ -313,21 +313,21 @@ fun MapScreen(
     // 用于节流的 Job
     var geocodingJob by remember { mutableStateOf<Job?>(null) }
     var fetchPostsJob by remember { mutableStateOf<Job?>(null) }
-    
+
     // 加载附近帖子的函数（带节流）- 使用 V2 API（基于 radius）
     fun fetchNearbyPosts(lat: Double, lng: Double, zoom: Double) {
         // 取消之前的请求
         fetchPostsJob?.cancel()
-        
-        
+
+
         // 1.5 秒节流
         fetchPostsJob = scope.launch {
             delay(1500) // 1.5 秒延迟
-            
+
             try {
                 isLoadingPosts = true
                 errorMessage = null
-                
+
                 // 使用 V2 API（基于 radius，小数据集优化）
                 val posts = mapPostRepository.getNearbyPostsV2(
                     lat = lat,
@@ -337,11 +337,11 @@ fun MapScreen(
                     postType = "ALL",      // 固定 ALL 类型（可配置）
                     maxResults = 200       // 固定 200 条
                 )
-                
+
                 // 合并新数据到缓存（去重）
                 val updatedCache = mapPostsCache.toMutableMap()
                 val newPostIds = mutableListOf<Long>()
-                
+
                 posts.forEach { post ->
                     if (!updatedCache.containsKey(post.mapPostId)) {
                         updatedCache[post.mapPostId] = post
@@ -354,16 +354,16 @@ fun MapScreen(
                     // ★★ 关键：同步到 ViewModel，让 uiState.posts 也有这些帖子
                     mapViewModel.addOrUpdatePost(post)
                 }
-                
+
                 mapPostsCache = updatedCache
                 showMarkers = true
-                
+
                 // 依次显示新的 marker（带动画）
                 newPostIds.forEach { postId ->
                     delay(80L) // 每个 marker 间隔 80ms
                     visibleMarkerIds = visibleMarkerIds + postId
                 }
-                
+
             } catch (e: Exception) {
                 errorMessage = e.message ?: "加载帖子失败"
                 snackbarHostState.showSnackbar(errorMessage!!)
@@ -372,7 +372,7 @@ fun MapScreen(
             }
         }
     }
-    
+
     // 地图视口状态 - 使用上次保存的位置
     val mapViewportState = rememberMapViewportState {
         setCameraOptions {
@@ -397,7 +397,7 @@ fun MapScreen(
             fetchNearbyPosts(center.latitude(), center.longitude(), zoom)
         }
     }
-    
+
     // 🔔 监听 WebSocket 消息（实时推送新帖子 + 更新统计数据）
     LaunchedEffect(Unit) {
         mainViewModel.wsManager.rawMessages.collect { message ->
@@ -406,12 +406,12 @@ fun MapScreen(
                     // 解析消息类型
                     val gson = Gson()
                     val baseMessage = gson.fromJson(it, WebSocketMessage::class.java)
-                    
+
                     when (baseMessage.type) {
                         "MAP_POST_NEW" -> {
                             // 解析完整消息
                             val mapPostNew = gson.fromJson(it, MapPostNewMessage::class.java)
-                            
+
                             // 转换为 MapPostNearby 格式
                             val newPost = MapPostNearby(
                                 mapPostId = mapPostNew.mapPostId,
@@ -432,7 +432,7 @@ fun MapScreen(
                                 postType = "ALL",
                                 createdAtMs = mapPostNew.createdAtMs
                             )
-                            
+
                             // 添加到缓存（去重）
                             if (!mapPostsCache.containsKey(newPost.mapPostId)) {
                                 mapPostsCache = mapPostsCache + (newPost.mapPostId to newPost)
@@ -444,27 +444,27 @@ fun MapScreen(
                                 showMarkers = true
 
                                 mapViewModel.addOrUpdatePost(newPost)
-                                
+
                                 // 显示提示
                                 snackbarHostState.showSnackbar("🎉 ${mapPostNew.creatorUsername} 发布了新帖子！")
                             }
                         }
-                        
+
                         "MSG_NEW" -> {
                             // 新评论消息 - 更新对应帖子的 commentCount
                             val msgNew = gson.fromJson(it, MessageNewMessage::class.java)
-                            
+
                             // 查找对应的帖子（通过 convId）
-                            val targetPost = mapPostsCache.values.find { post -> 
-                                post.convId == msgNew.convId 
+                            val targetPost = mapPostsCache.values.find { post ->
+                                post.convId == msgNew.convId
                             }
-                            
+
                             targetPost?.let { post ->
                                 // 创建更新后的帖子（commentCount +1）
                                 val updatedPost = post.copy(
                                     commentCount = post.commentCount + 1
                                 )
-                                
+
                                 // 更新缓存
                                 mapPostsCache = mapPostsCache + (post.mapPostId to updatedPost)
                             }
@@ -477,7 +477,7 @@ fun MapScreen(
             }
         }
     }
-    
+
     // 权限请求启动器
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
@@ -557,7 +557,7 @@ fun MapScreen(
         
         // 更新当前 zoom 级别（用于控制 cluster/detail 显示）
         currentZoom = zoom
-        
+
         // 取消之前的请求（节流）
         geocodingJob?.cancel()
         
@@ -601,7 +601,7 @@ fun MapScreen(
                 centerLocationName = null
             }
         }
-        
+
         // 🔄 加载附近的帖子（使用 1.5秒 节流）
         fetchNearbyPosts(center.latitude(), center.longitude(), zoom)
     }
@@ -694,7 +694,7 @@ fun MapScreen(
                     }
                 }
             }
-            
+
             // Mapbox 原生 Clustering：zoom ≤ 13 时显示蓝色聚合圆圈
             if (showMarkers && currentZoom <= 13.0 && mapPosts.isNotEmpty()) {
                 PointAnnotationGroup(
@@ -763,7 +763,7 @@ fun MapScreen(
                     }
                 }
             }
-            
+
             // ViewAnnotation 详细卡片：zoom > 13 时显示
             if (showMarkers && currentZoom > 13.0 && mapPosts.isNotEmpty()) {
                 mapPosts.forEach { post ->
@@ -776,7 +776,7 @@ fun MapScreen(
                         ) {
                             // 使用 scale 动画来实现进入效果
                             val scale = remember { Animatable(0.7f) }
-                            
+
                             LaunchedEffect(Unit) {
                                 scale.animateTo(
                                     targetValue = 1f,
@@ -786,7 +786,7 @@ fun MapScreen(
                                     )
                                 )
                             }
-                            
+
                             Box(
                                 modifier = Modifier
                                     .scale(scale.value)
@@ -1023,7 +1023,7 @@ fun MapScreen(
         //     color = Color.Black,
         //     fontSize = 12.sp
         // )
-        
+
         // DEBUG: DO NOT DELETE THIS CODE
         // // 显示当前位置信息（调试用）- 白色半透明背景
         // userLocation?.let { location ->
@@ -1041,7 +1041,7 @@ fun MapScreen(
         //         fontSize = 12.sp
         //     )
         // }
-        
+
         // Loading Indicator - 左上角
         if (isLoadingPosts) {
             Box(
@@ -1059,7 +1059,7 @@ fun MapScreen(
                 )
             }
         }
-        
+
         // Snackbar Host - 底部
         SnackbarHost(
             hostState = snackbarHostState,

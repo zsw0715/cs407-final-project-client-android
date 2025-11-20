@@ -3,6 +3,12 @@ package com.cs407.knot_client_android.ui.components
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
+import android.graphics.RenderEffect
+import android.graphics.Shader
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -13,11 +19,16 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -116,14 +127,17 @@ fun AddPlaceSheet(
 
     // 动画高度
     val animatedHeight = remember { Animatable(0f) }
+    
+    // 记录拖动起始高度
     var dragStartHeight by remember { mutableStateOf(0f) }
-
+    
+    // 监听 isVisible 变化，触发动画
     LaunchedEffect(isVisible) {
         if (isVisible) {
             animatedHeight.animateTo(
                 targetValue = targetHeight.value,
                 animationSpec = spring(
-                    dampingRatio = 0.75f,
+                    dampingRatio = 0.75f, // 更高的 dampingRatio，更快更稳
                     stiffness = Spring.StiffnessLow
                 )
             )
@@ -131,40 +145,56 @@ fun AddPlaceSheet(
             animatedHeight.animateTo(
                 targetValue = 0f,
                 animationSpec = spring(
-                    dampingRatio = 0.75f,
+                    dampingRatio = 0.75f, // 快速下滑
                     stiffness = Spring.StiffnessLow
                 )
             )
         }
     }
-
+    
+    // 拖动结束后的处理
     fun snapToTarget() {
         coroutineScope.launch {
             val current = animatedHeight.value
-            val threshold = targetHeight.value * 0.5f
-
+            val threshold = targetHeight.value * 0.5f // 如果拖动超过 50%，则关闭
+            
             if (current < threshold) {
+                // 关闭 sheet
                 animatedHeight.animateTo(
+//                    targetValue = 0f,
+//                    animationSpec = spring(
+//                        dampingRatio = 0.75f, // 快速下滑
+//                        stiffness = Spring.StiffnessLow
+//                    )
                     targetValue = 0f,
                     animationSpec = tween(
-                        durationMillis = 750,
+                        durationMillis = 750, // 从200~500之间调节速度
                         easing = FastOutSlowInEasing
                     )
                 )
+                // 动画结束后通知外部关闭
                 onDismiss()
             } else {
+                // 回弹到原位
                 animatedHeight.animateTo(
-                    targetValue = targetHeight.value,
+                    // targetValue = targetHeight.value,
+                    // animationSpec = spring(
+                    //     dampingRatio = 0.75f, // 快速回弹
+                    //     stiffness = Spring.StiffnessLow
+                    // )
+                    targetValue = 0f,
                     animationSpec = tween(
-                        durationMillis = 750,
+                        durationMillis = 750, // 从200~500之间调节速度
                         easing = FastOutSlowInEasing
                     )
                 )
             }
         }
     }
-
+    
+    // 监听动画高度，当接近 0 时自动同步状态
     LaunchedEffect(animatedHeight.value) {
+        // 如果高度已经很小（< 5dp），认为已关闭，同步状态
         if (animatedHeight.value < 5f && isVisible) {
             onDismiss()
         }
@@ -193,12 +223,13 @@ fun AddPlaceSheet(
         Box(
             modifier = modifier
                 .fillMaxWidth()
+                .padding(0.dp)
                 .height(animatedHeight.value.dp)
-                .clip(RoundedCornerShape(topStart = 51.dp, topEnd = 51.dp))
-                .background(Color(0xFFF8F6F4))
+                .clip(RoundedCornerShape(51.0f.dp)) // 更大的圆角
+                .background(Color(0xFFF8F6F4)) // 米黄色，不透明
                 .clickable(
                     enabled = true,
-                    onClick = {},
+                    onClick = {}, // 消费点击事件，防止穿透
                     indication = null,
                     interactionSource = remember { MutableInteractionSource() }
                 )
@@ -206,22 +237,31 @@ fun AddPlaceSheet(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 28.dp)
+                    .padding(28.dp)
             ) {
-                // 顶部标题栏（保持原有逻辑）
+                // 顶部拖动指示器 - 可以拖动关闭
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .pointerInput(Unit) {
                             detectVerticalDragGestures(
-                                onDragStart = { dragStartHeight = animatedHeight.value },
-                                onDragEnd = { snapToTarget() },
+                                onDragStart = {
+                                    // 记录起始高度
+                                    dragStartHeight = animatedHeight.value
+                                },
+                                onDragEnd = {
+                                    snapToTarget()
+                                },
                                 onVerticalDrag = { change, dragAmount ->
                                     change.consume()
+                                    
+                                    // 实时跟随手指，只允许向下拖（减小高度）
                                     val newHeight = (animatedHeight.value - dragAmount).coerceIn(
                                         0f, targetHeight.value
                                     )
-                                    coroutineScope.launch { animatedHeight.snapTo(newHeight) }
+                                    coroutineScope.launch {
+                                        animatedHeight.snapTo(newHeight)
+                                    }
                                 }
                             )
                         },

@@ -37,6 +37,8 @@ import com.cs407.knot_client_android.ui.map.MapViewModel
 import com.google.gson.Gson
 import com.mapbox.geojson.Point
 import java.util.UUID
+import androidx.compose.ui.platform.LocalContext
+import com.cs407.knot_client_android.ui.chat.ChatRoute
 
 
 @Composable
@@ -73,7 +75,7 @@ fun MainScreen(
     // PostDetailSheet 状态
     var selectedPost by remember { mutableStateOf<MapPostNearby?>(null) }
     var isPostDetailVisible by remember { mutableStateOf(false) }
-    
+
     // 根据展开进度计算 padding：
     // 收起时 30dp，半展开时 8dp，全展开时 0dp
     val currentPadding = when {
@@ -123,8 +125,15 @@ fun MainScreen(
         }
         
         // Chat 页面 - 永远存在，但可能不可见
+//        if (selectedTab == NavTab.CHAT) {
+//            ChatScreen(navController)
+//        }
         if (selectedTab == NavTab.CHAT) {
-            ChatScreen(navController)
+            ChatRoute(
+                navController = navController,
+                appContext = LocalContext.current,
+                baseUrl = "http://10.0.2.2:8080/" // 模拟器访问本机；真机请换成电脑局域网 IP
+            )
         }
         
         // Profile 页面 - 永远存在，但可能不可见

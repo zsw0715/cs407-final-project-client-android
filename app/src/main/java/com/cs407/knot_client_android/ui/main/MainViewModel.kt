@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val tokenStore = TokenStore(app)
     val wsManager = SimpleWebSocketManager()
+    val incoming = wsManager.incoming
 
     fun connectIfNeeded() {
         viewModelScope.launch {
