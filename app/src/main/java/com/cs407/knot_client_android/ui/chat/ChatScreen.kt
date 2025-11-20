@@ -13,6 +13,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -42,7 +44,8 @@ fun ChatScreen(
     navController: NavHostController,
     state: ChatUiState,
     bottomPaddingForFab: Dp = 84.dp,
-    onOpenConversation: (ConversationUi) -> Unit = {}
+    onOpenConversation: (ConversationUi) -> Unit = {},
+    onCreateGroupConversation: () -> Unit = {}
 ) {
     // 搜索相关的本地 UI 状态
     var isSearching by remember { mutableStateOf(false) }
@@ -69,7 +72,7 @@ fun ChatScreen(
             )
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(30.dp))
         // 顶部：普通模式 / 搜索模式 切换
         TransparentHeaderBar(
             isSearching = isSearching,
@@ -79,7 +82,8 @@ fun ChatScreen(
             onCloseSearch = {
                 isSearching = false
                 query = ""
-            }
+            },
+            onAddGroup = onCreateGroupConversation
         )
 
         Spacer(Modifier.height(8.dp))
@@ -124,7 +128,8 @@ private fun TransparentHeaderBar(
     query: String,
     onQueryChange: (String) -> Unit,
     onStartSearch: () -> Unit,
-    onCloseSearch: () -> Unit
+    onCloseSearch: () -> Unit,
+    onAddGroup: () -> Unit
 ) {
     if (!isSearching) {
         // 普通模式：左圆形搜索按钮 + 右 Knot Chat
@@ -134,6 +139,8 @@ private fun TransparentHeaderBar(
                 .padding(top = 4.dp, start = 4.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            var menuExpanded by remember { mutableStateOf(false) }
+
             Box(
                 modifier = Modifier
                     .size(46.dp)
@@ -144,7 +151,7 @@ private fun TransparentHeaderBar(
                         color = Color(0xFFBDBDBD),
                         shape = RoundedCornerShape(50)
                     )
-                    .clickable { onStartSearch() },
+                    .clickable {  menuExpanded = true },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -152,6 +159,26 @@ private fun TransparentHeaderBar(
                     contentDescription = "Search",
                     tint = Color(0xFF666666),
                     modifier = Modifier.size(22.dp)
+                )
+            }
+
+            DropdownMenu(
+                expanded = menuExpanded,
+                onDismissRequest = { menuExpanded = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Search") },
+                    onClick = {
+                        menuExpanded = false
+                        onStartSearch()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Add group conversation") },
+                    onClick = {
+                        menuExpanded = false
+                        onAddGroup()
+                    }
                 )
             }
 
