@@ -13,14 +13,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.cs407.knot_client_android.ui.theme.Knot_client_androidTheme
 import com.cs407.knot_client_android.navigation.SetupNavGraph
+import com.cs407.knot_client_android.utils.SimpleWebSocketManager
 
-class MainActivity : ComponentActivity() {
+class MainActivity() : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             Knot_client_androidTheme {
-                SetupNavGraph() 
+                SetupNavGraph()
             }
         }
     }

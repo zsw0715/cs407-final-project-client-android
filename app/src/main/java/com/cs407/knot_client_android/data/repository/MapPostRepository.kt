@@ -1,11 +1,14 @@
 package com.cs407.knot_client_android.data.repository
 
 import android.content.Context
+import com.cs407.knot_client_android.data.api.MapPostApiService
 import com.cs407.knot_client_android.data.api.RetrofitProvider
 import com.cs407.knot_client_android.data.local.TokenStore
+import com.cs407.knot_client_android.data.model.MapPost
 import com.cs407.knot_client_android.data.model.request.NearbyRequest
 import com.cs407.knot_client_android.data.model.request.NearbyRequestV2
 import com.cs407.knot_client_android.data.model.response.MapPostNearby
+
 
 /**
  * 地图帖子仓库
@@ -48,14 +51,14 @@ class MapPostRepository(context: Context, baseUrl: String) {
         )
 
         val response = apiService.getNearbyPosts("Bearer $token", request)
-        
+
         if (response.success && response.data != null) {
             return response.data
         } else {
             error(response.error ?: response.message)
         }
     }
-    
+
     /**
      * 获取附近的帖子 (V2 - 基于 radius，小数据集优化)
      * @param lat 纬度
@@ -89,7 +92,7 @@ class MapPostRepository(context: Context, baseUrl: String) {
         )
 
         val response = apiService.getNearbyPostsV2("Bearer $token", request)
-        
+
         if (response.success && response.data != null) {
             return response.data
         } else {

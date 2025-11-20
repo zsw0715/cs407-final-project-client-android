@@ -44,3 +44,25 @@ data class MessageNewMessage(
     val contentText: String?
 )
 
+/**
+ * 前端发送创建地图帖子的消息 (MAP_POST_CREATE)
+ */
+data class MapPostCreateMessage(
+    val type: String = "MAP_POST_CREATE",
+    val clientReqId: String,
+    val title: String,
+    val description: String,
+    val mediaUrls: List<String>?,   // 可以为 null
+    val loc: CreateLocInfo,
+    val allFriends: Boolean,
+    val memberIds: List<Long>?      // 后端要求是 UID 列表，可为 null
+)
+
+/**
+ * MAP_POST_CREATE 的位置信息
+ */
+data class CreateLocInfo(
+    val lat: Double,
+    val lng: Double,
+    val name: String
+)

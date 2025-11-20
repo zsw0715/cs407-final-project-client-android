@@ -1,5 +1,7 @@
 package com.cs407.knot_client_android.ui.main
 
+import android.app.Notification
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -29,6 +31,12 @@ import com.cs407.knot_client_android.navigation.Screen
 import com.cs407.knot_client_android.ui.friend.FriendScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.LaunchedEffect
+import com.cs407.knot_client_android.data.model.CreateLocInfo
+import com.cs407.knot_client_android.data.model.MapPostCreateMessage
+import com.cs407.knot_client_android.ui.map.MapViewModel
+import com.google.gson.Gson
+import com.mapbox.geojson.Point
+import java.util.UUID
 
 
 @Composable
@@ -37,6 +45,8 @@ fun MainScreen(
     initialTab: String = "MAP"
 ) {
     val mainVm = viewModel<MainViewModel>()
+    var currentUserLocation by remember { mutableStateOf<Point?>(null) }
+    val gson = remember { Gson() }
 
     LaunchedEffect(Unit) {
         mainVm.connectIfNeeded()   // 进入主界面即自动 AUTH + 心跳
@@ -55,7 +65,8 @@ fun MainScreen(
     
     // 展开进度（0f = 收起, 1f = 半展开, 2f = 全展开）
     var expandProgress by remember { mutableStateOf(0f) }
-    
+    val mapViewModel: MapViewModel = viewModel()
+
     // 控制 MapScreen 中 Add Sheet 的显示
     var isAddSheetVisible by remember { mutableStateOf(false) }
     
@@ -103,6 +114,10 @@ fun MainScreen(
                 onPostSelected = { post ->
                     selectedPost = post
                     isPostDetailVisible = true
+                },
+                mapViewModel = mapViewModel,
+                onUserLocationChanged = { point ->
+                    currentUserLocation = point      // ★ 保存到 MainScreen 的 state
                 }
             )
         }
@@ -170,11 +185,20 @@ fun MainScreen(
         AddPlaceSheet(
             isVisible = isAddSheetVisible,
             onDismiss = { isAddSheetVisible = false },
+            onPostKnot = { uiReq: MapPostCreateMessage ->    // ★ 这里类型自动推断也行
+                val json = gson.toJson(uiReq)
+                android.util.Log.d("MainScreen", "Sending ws: $json")
+                mainVm.wsManager.send(json)           // ★ 关键：用 MainViewModel 里的 wsManager
+                // UI 上你可以在 ws 回应成功后再关 sheet，也可以直接先关
+                isAddSheetVisible = false
+            },
+            currentUserLocation = currentUserLocation,
             modifier = Modifier
-                .zIndex(100f) // 最高 z-index，覆盖所有元素
                 .align(Alignment.BottomCenter)
+                .zIndex(50f)
         )
-        
+
+
         // PostDetailSheet - 帖子详情底部弹出层，覆盖所有元素
         PostDetailSheet(
             post = selectedPost,

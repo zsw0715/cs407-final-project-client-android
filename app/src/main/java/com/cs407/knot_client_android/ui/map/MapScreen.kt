@@ -110,12 +110,20 @@ import com.google.gson.Gson
 fun MapScreen(
     navController: NavHostController,
     mainViewModel: MainViewModel,
-    onPostSelected: (MapPostNearby) -> Unit = {}
+    mapViewModel: MapViewModel,
+    onPostSelected: (MapPostNearby) -> Unit = {},
+    onUserLocationChanged: (Point?) -> Unit = {}
 ) {
     val context = LocalContext.current
     val locationManager = remember { LocationManager(context) }
+
+    LaunchedEffect(Unit) {
+        mapViewModel.init(context)
+    }
+
     val mapPreferences = remember { MapPreferences(context) }
     val scope = rememberCoroutineScope()
+    val uiState by mapViewModel.uiState.collectAsState()
     
     // API Repository
     val mapPostRepository = remember { 
@@ -132,11 +140,15 @@ fun MapScreen(
     
     // 地图帖子数据状态 - 使用 Map 进行本地缓存和去重
     var mapPostsCache by remember { mutableStateOf<Map<Long, MapPostNearby>>(emptyMap()) }
-    val mapPosts: List<MapPostNearby> by remember { derivedStateOf { mapPostsCache.values.toList() } }
-    var isLoadingPosts by remember { mutableStateOf(false) }
+//    val mapPosts: List<MapPostNearby> by remember { derivedStateOf { mapPostsCache.values.toList() } }
+//    var isLoadingPosts by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
-    
+
+    // ★ 从 ViewModel 获取 MapPosts
+    val mapPosts = uiState.posts
+    var isLoadingPosts = uiState.isLoading
+
     // 位置状态
     var userLocation by remember { mutableStateOf<Point?>(null) }
     var hasPermission by remember { mutableStateOf(locationManager.hasLocationPermission()) }
@@ -419,10 +431,14 @@ fun MapScreen(
                             // 添加到缓存（去重）
                             if (!mapPostsCache.containsKey(newPost.mapPostId)) {
                                 mapPostsCache = mapPostsCache + (newPost.mapPostId to newPost)
-                                
+
                                 // 延迟一下，然后显示动画
                                 delay(300)
                                 visibleMarkerIds = visibleMarkerIds + newPost.mapPostId
+
+                                showMarkers = true
+
+                                mapViewModel.addOrUpdatePost(newPost)
                                 
                                 // 显示提示
                                 snackbarHostState.showSnackbar("🎉 ${mapPostNew.creatorUsername} 发布了新帖子！")
@@ -469,6 +485,7 @@ fun MapScreen(
                 location?.let {
                     val point = Point.fromLngLat(it.longitude, it.latitude)
                     userLocation = point
+                    onUserLocationChanged(point)
                     // 平滑移动到用户位置
                     mapViewportState.easeTo(
                         cameraOptions = CameraOptions.Builder()
@@ -491,6 +508,7 @@ fun MapScreen(
         if (hasPermission) {
             locationManager.getLocationUpdates().collect { location ->
                 userLocation = Point.fromLngLat(location.longitude, location.latitude)
+                onUserLocationChanged(userLocation)
             }
         }
     }
@@ -510,6 +528,7 @@ fun MapScreen(
             location?.let {
                 val point = Point.fromLngLat(it.longitude, it.latitude)
                 userLocation = point
+                onUserLocationChanged(point)
                 // 平滑移动到用户位置
                 mapViewportState.easeTo(
                     cameraOptions = CameraOptions.Builder()

@@ -12,6 +12,9 @@ data class GeocodingResponse(
  */
 data class GeocodingFeature(
     val place_name: String?,
+    val id: String? = null,
+    val center: List<Double>? = null,
+    val place_type: List<String>?,
     val text: String?
 )
 

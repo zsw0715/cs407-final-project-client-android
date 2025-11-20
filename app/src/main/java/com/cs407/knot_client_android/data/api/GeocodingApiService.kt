@@ -19,7 +19,22 @@ interface GeocodingApiService {
         @Path("longitude") longitude: Double,
         @Path("latitude") latitude: Double,
         @Query("access_token") accessToken: String,
-        @Query("limit") limit: Int = 1
+//        @Query("limit") limit: Int = 5,
+//        @Query("types") types: String = "poi,address,place"
+    ): GeocodingResponse
+
+    /**
+     * 正向地理编码：根据关键字搜索地点名称
+     * 例如 “Starbucks”、“library” 之类
+     */
+    @GET("geocoding/v5/mapbox.places/{query}.json")
+    suspend fun searchPlaces(
+        @Path("query") query: String,
+        @Query("access_token") accessToken: String,
+        // 可选：用当前地图中心作为搜索偏好点，会优先返回附近的结果
+        @Query("proximity") proximity: String? = null,   // "lng,lat"
+        @Query("limit") limit: Int = 8,
+//        @Query("types") types: String = "poi"
     ): GeocodingResponse
 
     companion object {

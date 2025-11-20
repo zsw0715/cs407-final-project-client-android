@@ -27,4 +27,5 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         wsManager.disconnect()
         super.onCleared()
     }
+
 }

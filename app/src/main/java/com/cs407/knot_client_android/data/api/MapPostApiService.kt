@@ -1,11 +1,14 @@
 package com.cs407.knot_client_android.data.api
 
+import com.cs407.knot_client_android.data.model.MapPost
 import com.cs407.knot_client_android.data.model.request.NearbyRequest
 import com.cs407.knot_client_android.data.model.request.NearbyRequestV2
 import com.cs407.knot_client_android.data.model.response.ApiResponse
 import com.cs407.knot_client_android.data.model.response.ConversationMessagesResponse
 import com.cs407.knot_client_android.data.model.response.MapPostDetailResponse
+import com.cs407.knot_client_android.data.model.response.MapPostNearby
 import com.cs407.knot_client_android.data.model.response.NearbyMapPostsResponse
+import com.google.android.gms.common.api.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Header
