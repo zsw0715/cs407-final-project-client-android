@@ -141,13 +141,12 @@ fun MapScreen(
     // 地图帖子数据状态 - 使用 Map 进行本地缓存和去重
     var mapPostsCache by remember { mutableStateOf<Map<Long, MapPostNearby>>(emptyMap()) }
 //    val mapPosts: List<MapPostNearby> by remember { derivedStateOf { mapPostsCache.values.toList() } }
-//    var isLoadingPosts by remember { mutableStateOf(false) }
+    var isLoadingPosts by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     // ★ 从 ViewModel 获取 MapPosts
     val mapPosts = uiState.posts
-    var isLoadingPosts = uiState.isLoading
 
     // 位置状态
     var userLocation by remember { mutableStateOf<Point?>(null) }
@@ -347,7 +346,13 @@ fun MapScreen(
                     if (!updatedCache.containsKey(post.mapPostId)) {
                         updatedCache[post.mapPostId] = post
                         newPostIds.add(post.mapPostId)
+                    } else {
+                        // 顺便把已存在的更新一下，保证统计数据是最新的
+                        updatedCache[post.mapPostId] = post
                     }
+
+                    // ★★ 关键：同步到 ViewModel，让 uiState.posts 也有这些帖子
+                    mapViewModel.addOrUpdatePost(post)
                 }
                 
                 mapPostsCache = updatedCache
