@@ -364,51 +364,67 @@ fun AddPlaceSheet(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // 内容区域 - 根据模式切换
-                AnimatedContent(
-                    targetState = currentMode,
-                    transitionSpec = {
-                        fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
-                    },
-                    label = "content_mode"
-                ) { mode ->
-                    when (mode) {
-                        SheetMode.FORM -> {
-                            FormContent(
-                                title = title,
-                                onTitleChange = { title = it },
-                                selectedLocation = selectedLocation,
-                                onLocationPickerRequest = {
-                                    // 触发位置选择器显示
-                                    showLocationPicker = true
-                                },
-                                description = description,
-                                onDescriptionChange = { description = it },
-                                photos = photos,
-                                onAddPhoto = { photos = photos + "new_photo_${photos.size + 1}" },
-                                onRemoveLocation = { selectedLocation = null }
+                val scrollState = rememberScrollState()
+
+                Column(
+                    modifier = Modifier
+                        .weight(1f)      // 占据中间剩余空间
+                        .verticalScroll(scrollState)      // 让中间内容可以滚动
+                ) {
+                    // 内容区域 - 根据模式切换
+                    AnimatedContent(
+                        targetState = currentMode,
+                        transitionSpec = {
+                            fadeIn(animationSpec = tween(300)) togetherWith fadeOut(
+                                animationSpec = tween(
+                                    300
+                                )
                             )
-                        }
-                        SheetMode.FRIEND_SELECTION -> {
-                            FriendSelectionContent(
-                                friends = friends,
-                                selectedFriends = selectedFriends,
-                                onFriendToggle = { friendId ->
-                                    selectedFriends = if (selectedFriends.contains(friendId)) {
-                                        selectedFriends - friendId
-                                    } else if (selectedFriends.size < 3) {
-                                        selectedFriends + friendId
-                                    } else {
-                                        selectedFriends
-                                    }
-                                },
-                                maxFriends = 3
-                            )
+                        },
+                        label = "content_mode"
+                    ) { mode ->
+                        when (mode) {
+                            SheetMode.FORM -> {
+                                FormContent(
+                                    title = title,
+                                    onTitleChange = { title = it },
+                                    selectedLocation = selectedLocation,
+                                    onLocationPickerRequest = {
+                                        // 触发位置选择器显示
+                                        showLocationPicker = true
+                                    },
+                                    description = description,
+                                    onDescriptionChange = { description = it },
+                                    photos = photos,
+                                    onAddPhoto = {
+                                        photos = photos + "new_photo_${photos.size + 1}"
+                                    },
+                                    onRemoveLocation = { selectedLocation = null }
+                                )
+                            }
+
+                            SheetMode.FRIEND_SELECTION -> {
+                                FriendSelectionContent(
+                                    friends = friends,
+                                    selectedFriends = selectedFriends,
+                                    onFriendToggle = { friendId ->
+                                        selectedFriends = if (selectedFriends.contains(friendId)) {
+                                            selectedFriends - friendId
+                                        } else if (selectedFriends.size < 3) {
+                                            selectedFriends + friendId
+                                        } else {
+                                            selectedFriends
+                                        }
+                                    },
+                                    maxFriends = 3
+                                )
+                            }
                         }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                }
 
                 // SHARE WITH 滑动选择器
                 ShareTypeSlider(
