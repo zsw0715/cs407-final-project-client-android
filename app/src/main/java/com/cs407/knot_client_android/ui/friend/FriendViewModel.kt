@@ -1,305 +1,188 @@
 package com.cs407.knot_client_android.ui.friend
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.cs407.knot_client_android.data.local.TokenStore
+import com.cs407.knot_client_android.data.repository.FriendRepository
+import com.cs407.knot_client_android.data.repository.UserRepository
+import com.cs407.knot_client_android.ui.main.MainViewModel
 import com.cs407.knot_client_android.utils.SimpleWebSocketManager
 import com.google.gson.Gson
-import com.google.gson.JsonObject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
-class FriendViewModel(app: Application) : AndroidViewModel(app) {
-    private val tokenStore = TokenStore(app)
-    private val wsManager = SimpleWebSocketManager()
+class FriendViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val baseUrl = "http://10.0.2.2:8080"
+    private var wsManager: SimpleWebSocketManager? = null
+
+    private val userRepository = UserRepository(
+        application.applicationContext,
+        baseUrl
+    )
+
+    private val friendRepository = FriendRepository(
+        application.applicationContext,
+        baseUrl
+    )
+
     private val gson = Gson()
 
-    private val sendDrafts = ArrayDeque<FriendRequestDraft>()
-
-    private val _uiState = MutableStateFlow(
-        FriendUiState(
-            currentUserId = tokenStore.getUserId()
-        )
-    )
+    private val _uiState = MutableStateFlow(FriendUiState())
     val uiState: StateFlow<FriendUiState> = _uiState.asStateFlow()
 
     init {
-        observeConnectionState()
-        observeIncomingMessages()
-        reconnect()
+        loadFriends()
+        loadIncomingRequests()
     }
 
-    fun onWsUrlChange(newUrl: String) {
-        _uiState.update { it.copy(wsUrl = newUrl) }
+    fun attachMainViewModel(mainVm: MainViewModel) {
+        this.wsManager = mainVm.wsManager
     }
 
-    fun toggleConnection() {
-        if (_uiState.value.isConnected) {
-            wsManager.disconnect()
-            showBanner("WebSocket disconnected", false)
-        } else {
-            reconnect()
-        }
-    }
-
-    fun reconnect() {
-        viewModelScope.launch {
-            val jwt = tokenStore.get()
-            if (jwt.isNullOrBlank()) {
-                showBanner("Missing access token. Please sign in again.", true)
-                return@launch
+    /** 按用户名搜索用户 */
+    fun searchUserByUsername(username: String) {
+        if (username.isBlank()) {
+            _uiState.update {
+                it.copy(
+                    searchError = "Username cannot be empty.",
+                    searchedUser = null
+                )
             }
-            wsManager.connect(_uiState.value.wsUrl, jwt)
-        }
-    }
-
-    fun clearBanner() {
-        _uiState.update { it.copy(bannerMessage = null) }
-    }
-
-    private fun showBanner(text: String, isError: Boolean) {
-        _uiState.update { it.copy(bannerMessage = BannerMessage(text, isError)) }
-    }
-
-    fun sendFriendRequest(receiverInput: String, message: String) {
-        val receiverId = receiverInput.toLongOrNull()
-        if (receiverId == null) {
-            showBanner("Enter a valid user ID", true)
             return
         }
-        if (!_uiState.value.isConnected) {
-            showBanner("Connect WebSocket first", true)
-            return
-        }
-        val payload = mapOf(
-            "type" to "FRIEND_REQUEST_SEND",
-            "receiverId" to receiverId,
-            "message" to message.ifBlank { "Hi, let's be friends!" }
-        )
-        sendDrafts.addLast(FriendRequestDraft(receiverId, message))
-        wsManager.send(gson.toJson(payload))
-        addLog("Trying to add user #$receiverId as a friend")
-    }
 
-    fun acceptRequest(requestId: Long) {
-        val payload = mapOf(
-            "type" to "FRIEND_REQUEST_ACCEPT",
-            "requestId" to requestId
-        )
-        wsManager.send(gson.toJson(payload))
-        addLog("Accepting request -> #$requestId")
-    }
-
-    fun rejectRequest(requestId: Long) {
-        val payload = mapOf(
-            "type" to "FRIEND_REQUEST_REJECT",
-            "requestId" to requestId
-        )
-        wsManager.send(gson.toJson(payload))
-        addLog("Rejecting request -> #$requestId")
-    }
-
-    fun resendRequest(item: FriendRequestItem) {
-        val receiverId = item.peer.userId
-        if (receiverId == null) {
-            showBanner("Missing receiver id", true)
-            return
-        }
-        sendFriendRequest(receiverId.toString(), item.message)
-    }
-
-    fun removeFriend(friend: FriendUserSummary) {
-        val friendId = friend.userId
-        if (friendId == null) {
-            showBanner("Missing friend id", true)
-            return
-        }
-        if (!_uiState.value.isConnected) {
-            showBanner("Connect WebSocket first", true)
-            return
-        }
-        val payload = mapOf(
-            "type" to "FRIEND_REMOVE",
-            "friendId" to friendId
-        )
-        wsManager.send(gson.toJson(payload))
-        addLog("Removing friend -> #$friendId")
-        _uiState.update { state ->
-            state.copy(
-                friends = state.friends.filterNot { it.userId == friendId }
-            )
-        }
-        showBanner("${friend.displayName} removed", false)
-    }
-
-    private fun observeConnectionState() {
         viewModelScope.launch {
-            wsManager.connectionState.collectLatest { connected ->
-                _uiState.update { it.copy(isConnected = connected) }
-                addLog(if (connected) "✅ Connected to friend service" else "❌ WebSocket disconnected")
-            }
-        }
-    }
+            _uiState.update { it.copy(isSearching = true, searchError = null, searchedUser = null) }
+            try {
+                val info = userRepository.getUserInfoByUsername(username.trim())
 
-    private fun observeIncomingMessages() {
-        viewModelScope.launch {
-            wsManager.incoming.collect { raw ->
-                addLog("⬇️ $raw")
-                runCatching {
-                    val obj = gson.fromJson(raw, JsonObject::class.java)
-                    when (obj.get("type")?.asString) {
-                        "FRIEND_REQUEST_NEW" -> handleIncomingRequest(obj)
-                        "FRIEND_REQUEST_ACK" -> handleAck(obj)
-                        "FRIEND_ADDED" -> handleFriendAdded(obj)
-                        "FRIEND_REMOVED" -> handleFriendRemoved(obj)
-                        else -> Unit
-                    }
-                }.onFailure {
-                    showBanner("Failed to parse message: ${it.message}", true)
+                val summary = FriendUserSummary(
+                    userId = info.userid,
+                    username = info.username,
+                    avatar = info.avatarUrl,
+                    convId = null,
+                    createdAtMs = null
+                )
+
+                _uiState.update {
+                    it.copy(
+                        isSearching = false,
+                        searchedUser = summary,
+                        searchError = null
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isSearching = false,
+                        searchedUser = null,
+                        searchError = e.message ?: "Failed to search user."
+                    )
                 }
             }
         }
     }
 
-    private fun handleIncomingRequest(obj: JsonObject) {
-        val requestId = obj.get("requestId")?.asLong ?: return
-        val message = obj.get("message")?.asString ?: ""
-        val timestamp = obj.get("timestamp")?.asLong
-        val fromUser = obj.getAsJsonObject("fromUser")
-        val userSummary = FriendUserSummary(
-            userId = fromUser?.get("userId")?.asLong,
-            username = fromUser?.get("username")?.asString,
-            avatarUrl = fromUser?.get("avatarUrl")?.asString
+    /** 加载好友列表（HTTP） */
+    fun loadFriends() {
+        viewModelScope.launch {
+            try {
+                val resp = friendRepository.getFriends()
+                if (resp.success && resp.data != null) {
+                    _uiState.update { it.copy(friends = resp.data) }
+                }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    /** 加载收到的好友申请列表（HTTP） */
+    fun loadIncomingRequests() {
+        viewModelScope.launch {
+            try {
+                val resp = friendRepository.getIncomingRequests()
+                if (resp.success && resp.data != null) {
+                    _uiState.update { it.copy(incomingRequests = resp.data) }
+                }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    /** 发送好友请求（WebSocket） */
+    fun sendFriendRequest(receiverId: Long, message: String?) {
+        val payload = FriendRequestSendPayload(
+            receiverId = receiverId,
+            message = message?.takeIf { it.isNotBlank() }
         )
-        val newItem = FriendRequestItem(
-            requestId = requestId,
-            message = message,
-            timestamp = timestamp,
-            status = FriendRequestStatus.Pending,
-            direction = FriendRequestDirection.Incoming,
-            peer = userSummary
+        sendWebSocketJson(payload)
+    }
+
+    /**
+     * 接受好友请求（WebSocket + 本地移除这一条）
+     *
+     * 注意：requestId 是后端生成的“好友申请记录 ID”，和 userId 不同。
+     */
+    fun acceptRequest(requestId: Long) {
+        val payload = FriendRequestActionPayload(
+            type = "FRIEND_REQUEST_ACCEPT",
+            requestId = requestId
         )
-        _uiState.update { state ->
-            state.copy(
-                incomingRequests = (state.incomingRequests.filterNot { it.requestId == requestId } + newItem)
-                    .sortedByDescending { it.timestamp ?: 0L },
-                bannerMessage = BannerMessage("Friend request from ${userSummary.displayName}")
+        sendWebSocketJson(payload)
+
+        _uiState.update {
+            it.copy(
+                incomingRequests = it.incomingRequests.filterNot { req ->
+                    req.requestId == requestId
+                }
             )
         }
     }
 
-    private fun handleAck(obj: JsonObject) {
-        val status = obj.get("status")?.asString ?: return
-        val requestId = obj.get("requestId")?.asLong ?: return
-        val timestamp = obj.get("timestamp")?.asLong
-        when (status.lowercase(Locale.ROOT)) {
-            "sent" -> handleSendAck(requestId, timestamp)
-            "accepted" -> handleAcceptAck(requestId, obj.get("convId")?.asLong)
-            "rejected" -> handleRejectAck(requestId)
-            else -> showBanner("Unknown status: $status", true)
-        }
-    }
-
-    private fun handleSendAck(requestId: Long, timestamp: Long?) {
-        val draft = sendDrafts.removeFirstOrNull()
-        val fallbackName = draft?.receiverId?.let { "User #$it" } ?: "Request #$requestId"
-        val newItem = FriendRequestItem(
-            requestId = requestId,
-            message = draft?.message ?: "",
-            timestamp = timestamp,
-            status = FriendRequestStatus.Pending,
-            direction = FriendRequestDirection.Outgoing,
-            peer = FriendUserSummary(
-                userId = draft?.receiverId,
-                username = fallbackName
-            )
+    /** 拒绝好友请求（WebSocket + 本地移除这一条） */
+    fun rejectRequest(requestId: Long) {
+        val payload = FriendRequestActionPayload(
+            type = "FRIEND_REQUEST_REJECT",
+            requestId = requestId
         )
-        _uiState.update { state ->
-            state.copy(
-                outgoingRequests = (state.outgoingRequests.filterNot { it.requestId == requestId } + newItem)
-                    .sortedByDescending { it.timestamp ?: 0L },
-                bannerMessage = BannerMessage("Friend request sent. Waiting for response.")
+        sendWebSocketJson(payload)
+
+        _uiState.update {
+            it.copy(
+                incomingRequests = it.incomingRequests.filterNot { req ->
+                    req.requestId == requestId
+                }
             )
         }
     }
 
-    private fun handleAcceptAck(requestId: Long, convId: Long?) {
-        _uiState.update { state ->
-            state.copy(
-                incomingRequests = state.incomingRequests.filterNot { it.requestId == requestId },
-                bannerMessage = BannerMessage(
-                    text = "Request accepted. Chat ${convId ?: "--"} created.",
-                    isError = false
-                )
-            )
+    /** 统一序列化并通过 MainViewModel 的 WebSocket 发送 */
+    private fun sendWebSocketJson(payload: Any) {
+        val json = gson.toJson(payload)
+        Log.d("FriendViewModel", "Sending WS payload: $json")
+        val manager = wsManager
+        if (manager == null) {
+            Log.w("FriendViewModel", "wsManager is null, cannot send WS message")
+            return
         }
+        manager.send(json)
     }
-
-    private fun handleRejectAck(requestId: Long) {
-        _uiState.update { state ->
-            state.copy(
-                incomingRequests = state.incomingRequests.filterNot { it.requestId == requestId },
-                outgoingRequests = state.outgoingRequests.filterNot { it.requestId == requestId },
-                bannerMessage = BannerMessage("Request rejected or cancelled")
-            )
-        }
-    }
-
-    private fun handleFriendAdded(obj: JsonObject) {
-        val friendObj = obj.getAsJsonObject("friend") ?: return
-        val requestId = obj.get("requestId")?.asLong
-        val user = FriendUserSummary(
-            userId = friendObj.get("userId")?.asLong,
-            username = friendObj.get("username")?.asString,
-            avatarUrl = friendObj.get("avatarUrl")?.asString
-        )
-        _uiState.update { state ->
-            state.copy(
-                outgoingRequests = requestId?.let { rid ->
-                    state.outgoingRequests.filterNot { it.requestId == rid }
-                } ?: state.outgoingRequests,
-                friends = (state.friends.filterNot { it.userId == user.userId } + user)
-                    .sortedBy { it.displayName },
-                bannerMessage = BannerMessage("${user.displayName} added as a friend")
-            )
-        }
-    }
-
-    private fun handleFriendRemoved(obj: JsonObject) {
-        val friendId = obj.get("friendId")?.asLong ?: return
-        _uiState.update { state ->
-            state.copy(
-                friends = state.friends.filterNot { it.userId == friendId },
-                bannerMessage = BannerMessage("Friend #$friendId removed")
-            )
-        }
-    }
-
-    private fun addLog(line: String) {
-        val timestamp = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
-        _uiState.update { state ->
-            val updated = (state.logs + "[$timestamp] $line").takeLast(60)
-            state.copy(logs = updated)
-        }
-    }
-
-    override fun onCleared() {
-        wsManager.disconnect()
-        super.onCleared()
-    }
-
-    private fun <T> ArrayDeque<T>.removeFirstOrNull(): T? = if (isEmpty()) null else removeFirst()
-
-    private data class FriendRequestDraft(
-        val receiverId: Long,
-        val message: String
-    )
 }
+
+/** 发送好友申请的 payload */
+data class FriendRequestSendPayload(
+    val type: String = "FRIEND_REQUEST_SEND",
+    val receiverId: Long,
+    val message: String?
+)
+
+/** 接受 / 拒绝好友申请的 payload */
+data class FriendRequestActionPayload(
+    val type: String,
+    val requestId: Long
+)

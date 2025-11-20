@@ -1,38 +1,16 @@
 package com.cs407.knot_client_android.ui.friend
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowDownward
-import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.Email
-import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -54,7 +32,10 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.cs407.knot_client_android.navigation.Screen
 import com.cs407.knot_client_android.ui.components.FloatingActionButton
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import com.cs407.knot_client_android.ui.main.MainViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -64,31 +45,34 @@ fun FriendScreen(
     navController: NavHostController,
     viewModel: FriendViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    var receiverIdInput by rememberSaveable { mutableStateOf("") }
-    var messageInput by rememberSaveable {
-        mutableStateOf("Hi, I'm User1. Let's be friends!")
+    // 1. 拿到 MainScreen 对应的 backStackEntry
+    val mainBackStackEntry = remember(navController) {
+        navController.getBackStackEntry(Screen.Main.route)
     }
+
+    // 2. 基于这个 entry 取出同一个 MainViewModel 实例
+    val mainViewModel: MainViewModel = viewModel(mainBackStackEntry)
+
+    // 3. 把这个 MainViewModel 交给 FriendViewModel，用于发 WebSocket
+    LaunchedEffect(mainViewModel) {
+        viewModel.attachMainViewModel(mainViewModel)
+    }
+    val uiState by viewModel.uiState.collectAsState()
+
+    var usernameInput by rememberSaveable { mutableStateOf("") }
+    var messageInput by rememberSaveable { mutableStateOf("Hi! Let's be friends!") }
 
     FriendScreenContent(
         navController = navController,
         state = uiState,
-        receiverIdInput = receiverIdInput,
+        usernameInput = usernameInput,
         messageInput = messageInput,
-        onReceiverIdChange = { receiverIdInput = it },
+        onUsernameChange = { usernameInput = it },
         onMessageChange = { messageInput = it },
-        onSendRequest = {
-            viewModel.sendFriendRequest(receiverIdInput, messageInput)
-            receiverIdInput = ""
-        },
+        onSearchUser = { viewModel.searchUserByUsername(usernameInput) },
+        onSendRequest = { user -> viewModel.sendFriendRequest(user.userId, messageInput) },
         onAccept = viewModel::acceptRequest,
-        onReject = viewModel::rejectRequest,
-        onResend = viewModel::resendRequest,
-        onRemoveFriend = viewModel::removeFriend,
-        onToggleConnection = viewModel::toggleConnection,
-        onWsUrlChange = viewModel::onWsUrlChange,
-        onReconnect = viewModel::reconnect,
-        onBannerDismiss = viewModel::clearBanner
+        onReject = viewModel::rejectRequest
     )
 }
 
@@ -96,19 +80,14 @@ fun FriendScreen(
 private fun FriendScreenContent(
     navController: NavHostController,
     state: FriendUiState,
-    receiverIdInput: String,
+    usernameInput: String,
     messageInput: String,
-    onReceiverIdChange: (String) -> Unit,
+    onUsernameChange: (String) -> Unit,
     onMessageChange: (String) -> Unit,
-    onSendRequest: () -> Unit,
+    onSearchUser: () -> Unit,
+    onSendRequest: (FriendUserSummary) -> Unit,
     onAccept: (Long) -> Unit,
-    onReject: (Long) -> Unit,
-    onResend: (FriendRequestItem) -> Unit,
-    onRemoveFriend: (FriendUserSummary) -> Unit,
-    onToggleConnection: () -> Unit,
-    onWsUrlChange: (String) -> Unit,
-    onReconnect: () -> Unit,
-    onBannerDismiss: () -> Unit
+    onReject: (Long) -> Unit
 ) {
     val backgroundBrush = Brush.verticalGradient(
         listOf(Color(0xFFF8F6F4), Color(0xFFF3F0FA))
@@ -119,215 +98,62 @@ private fun FriendScreenContent(
             .fillMaxSize()
             .background(backgroundBrush)
     ) {
-
         LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 20.dp, vertical = 24.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 20.dp, vertical = 24.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
+            // 标题
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = "Friend Management System",
-                        fontSize = 26.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    AnimatedVisibility(visible = state.bannerMessage != null) {
-                        state.bannerMessage?.let { banner ->
-                            Surface(
-                                modifier = Modifier.fillMaxWidth(),
-                                color = if (banner.isError) Color(0xFFFFE4E6) else Color(0xFFE0F7FA),
-                                shape = RoundedCornerShape(18.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .padding(14.dp)
-                                        .fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = banner.text,
-                                        color = if (banner.isError) Color(0xFFB42318) else Color(0xFF026E78),
-                                        fontSize = 13.sp
-                                    )
-                                    Text(
-                                        text = "Dismiss",
-                                        modifier = Modifier
-                                            .padding(start = 12.dp)
-                                            .clickable { onBannerDismiss() }
-                                            .padding(4.dp),
-                                        color = Color(0xFF6366F1),
-                                        fontSize = 12.sp
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            item {
-                ConnectionCard(
-                    state = state,
-                    onToggleConnection = onToggleConnection,
-                    onWsUrlChange = onWsUrlChange,
-                    onReconnect = onReconnect
+                Text(
+                    text = "Friend Management System",
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
 
+            // 发送好友申请区域
             item {
-                SendRequestCard(
-                    receiverIdInput = receiverIdInput,
+                SendFriendRequestCard(
+                    usernameInput = usernameInput,
                     messageInput = messageInput,
-                    onReceiverIdChange = onReceiverIdChange,
+                    onUsernameChange = onUsernameChange,
                     onMessageChange = onMessageChange,
-                    onSendRequest = onSendRequest,
-                    enabled = state.isConnected
+                    onSearchUser = onSearchUser,
+                    searchedUser = state.searchedUser,
+                    searchError = state.searchError,
+                    onSendRequest = onSendRequest
                 )
             }
 
+            // 收到的好友申请列表
             item {
-                RequestListCard(
-                    title = "Incoming requests",
-                    subtitle = null,
-                    emptyHint = "No pending friend requests.",
+                IncomingRequestListCard(
                     requests = state.incomingRequests,
-                    actionContent = { item ->
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Button(
-                                onClick = { onAccept(item.requestId) },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981))
-                            ) {
-                                Text("Accept")
-                            }
-                            OutlinedButton(
-                                onClick = { onReject(item.requestId) },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text("Reject")
-                            }
-                        }
-                    }
+                    onAccept = onAccept,
+                    onReject = onReject
                 )
             }
 
-            item {
-                RequestListCard(
-                    title = "Requests I sent",
-                    subtitle = null,
-                    emptyHint = "You haven't sent any requests yet.",
-                    requests = state.outgoingRequests,
-                    actionContent = { item ->
-                        if (item.status == FriendRequestStatus.Pending) {
-                            OutlinedButton(onClick = { onResend(item) }) {
-                                Icon(Icons.Outlined.Refresh, contentDescription = null)
-                                Spacer(Modifier.width(6.dp))
-                                Text("Resend")
-                            }
-                        }
-                    }
-                )
-            }
-
+            // 好友列表（先留空）
             item {
                 FriendSectionCard(
                     title = "Friend list",
                     subtitle = null
                 ) {
-                    if (state.friends.isEmpty()) {
-                        Text(
-                            text = "No friends yet. Anyone you connect with shows up here.",
-                            color = Color(0xFF6B7280),
-                            fontSize = 13.sp
-                        )
-                    } else {
-                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            state.friends.forEach { friend ->
-                                Surface(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(16.dp),
-                                    color = Color.White.copy(alpha = 0.7f)
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(14.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Column {
-                                            Text(
-                                                text = friend.displayName,
-                                                fontWeight = FontWeight.Medium
-                                            )
-                                            friend.userId?.let {
-                                                Text(
-                                                    text = "User ID: $it",
-                                                    fontSize = 12.sp,
-                                                    color = Color(0xFF6B7280)
-                                                )
-                                            }
-                                        }
-                                        Row(
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Text(
-                                                text = "Ready to chat",
-                                                fontSize = 12.sp,
-                                                color = Color(0xFF10B981)
-                                            )
-                                            OutlinedButton(onClick = { onRemoveFriend(friend) }) {
-                                                Text("Remove")
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            item {
-                FriendSectionCard(
-                    title = "Realtime log",
-                    subtitle = null
-                ) {
-                    val lastLogs = state.logs.takeLast(6).reversed()
-                    if (lastLogs.isEmpty()) {
-                        Text(
-                            text = "Connect to the socket to start seeing AUTH / ACK / push events.",
-                            color = Color(0xFF6B7280),
-                            fontSize = 13.sp
-                        )
-                    } else {
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            lastLogs.forEach { log ->
-                                Text(
-                                    text = log,
-                                    fontSize = 12.sp,
-                                    color = Color(0xFF111827),
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        }
-                    }
+                    Text(
+                        text = "Coming soon...",
+                        color = Color(0xFF6B7280),
+                        fontSize = 13.sp
+                    )
                 }
             }
 
             item { Spacer(modifier = Modifier.height(80.dp)) }
         }
 
-        // 右下角浮动按钮 - 返回聊天页面
-
+        // 右下角浮动按钮：返回聊天页面
         FloatingActionButton(
             icon = Icons.Outlined.Email,
             onClick = {
@@ -343,87 +169,29 @@ private fun FriendScreenContent(
 }
 
 @Composable
-private fun ConnectionCard(
-    state: FriendUiState,
-    onToggleConnection: () -> Unit,
-    onWsUrlChange: (String) -> Unit,
-    onReconnect: () -> Unit
+private fun SendFriendRequestCard(
+    usernameInput: String,
+    messageInput: String,
+    onUsernameChange: (String) -> Unit,
+    onMessageChange: (String) -> Unit,
+    onSearchUser: () -> Unit,
+    searchedUser: FriendUserSummary?,
+    searchError: String?,
+    onSendRequest: (FriendUserSummary) -> Unit
 ) {
     FriendSectionCard(
-        title = "Connection",
+        title = "Send friend request",
         subtitle = null
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = if (state.isConnected) "Status: Connected" else "Status: Disconnected",
-                fontWeight = FontWeight.Medium,
-                color = if (state.isConnected) Color(0xFF10B981) else Color(0xFFEF4444)
-            )
-            AssistChip(
-                onClick = {},
-                label = { Text(text = state.currentUserId?.let { "UID $it" } ?: "Signed out") },
-                colors = AssistChipDefaults.assistChipColors(
-                    containerColor = Color(0xFFE0E7FF)
-                )
-            )
-        }
         OutlinedTextField(
-            value = state.wsUrl,
-            onValueChange = onWsUrlChange,
-            label = { Text("WebSocket URL") },
+            value = usernameInput,
+            onValueChange = onUsernameChange,
+            label = { Text("Username") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             shape = RoundedCornerShape(14.dp)
         )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Button(
-                onClick = onToggleConnection,
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (state.isConnected) Color(0xFFEF4444) else Color(0xFF6366F1)
-                )
-            ) {
-                Text(if (state.isConnected) "Disconnect" else "Connect")
-            }
-            OutlinedButton(
-                onClick = onReconnect,
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Reconnect")
-            }
-        }
-    }
-}
 
-@Composable
-private fun SendRequestCard(
-    receiverIdInput: String,
-    messageInput: String,
-    onReceiverIdChange: (String) -> Unit,
-    onMessageChange: (String) -> Unit,
-    onSendRequest: () -> Unit,
-    enabled: Boolean
-) {
-    FriendSectionCard(
-        title = "Send request",
-        subtitle = null
-    ) {
-        OutlinedTextField(
-            value = receiverIdInput,
-            onValueChange = onReceiverIdChange,
-            label = { Text("Receiver user ID") },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(14.dp),
-            singleLine = true,
-            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number)
-        )
         OutlinedTextField(
             value = messageInput,
             onValueChange = onMessageChange,
@@ -432,33 +200,54 @@ private fun SendRequestCard(
             shape = RoundedCornerShape(14.dp),
             minLines = 2
         )
+
         Button(
-            onClick = onSendRequest,
-            enabled = enabled && receiverIdInput.isNotBlank(),
+            onClick = onSearchUser,
+            enabled = usernameInput.isNotBlank(),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Send")
+            Text("Search user")
         }
-    }
-}
 
-@Composable
-private fun RequestListCard(
-    title: String,
-    subtitle: String?,
-    emptyHint: String,
-    requests: List<FriendRequestItem>,
-    actionContent: @Composable (FriendRequestItem) -> Unit
-) {
-    FriendSectionCard(title = title, subtitle = subtitle) {
-        if (requests.isEmpty()) {
-            Text(text = emptyHint, color = Color(0xFF6B7280), fontSize = 13.sp)
-        } else {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                requests.forEachIndexed { index, item ->
-                    RequestCard(item = item, actionContent = { actionContent(item) })
-                    if (index != requests.lastIndex) {
-                        Divider(color = Color(0xFFE5E7EB))
+        if (searchError != null) {
+            Text(
+                text = searchError,
+                color = Color(0xFFDC2626),
+                fontSize = 12.sp
+            )
+        }
+
+        if (searchedUser != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF9FAFB)),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "Found user",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp
+                    )
+                    Text(
+                        text = "Username: ${searchedUser.username}",
+                        fontSize = 13.sp
+                    )
+                    Text(
+                        text = "User ID: ${searchedUser.userId}",
+                        fontSize = 12.sp,
+                        color = Color(0xFF6B7280)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = { onSendRequest(searchedUser) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Send friend request")
                     }
                 }
             }
@@ -467,49 +256,77 @@ private fun RequestListCard(
 }
 
 @Composable
-private fun RequestCard(
-    item: FriendRequestItem,
-    actionContent: @Composable () -> Unit
+private fun IncomingRequestListCard(
+    requests: List<FriendRequestItem>,
+    onAccept: (Long) -> Unit,
+    onReject: (Long) -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text(text = item.peer.displayName, fontWeight = FontWeight.Medium)
-                Text(
-                    text = "Message: ${item.message}",
-                    fontSize = 12.sp,
-                    color = Color(0xFF6B7280)
-                )
-            }
-            AssistChip(
-                onClick = {},
-                label = {
-                    Text(
-                        text = if (item.direction == FriendRequestDirection.Incoming) "Awaiting your action" else "Waiting on peer",
-                        fontSize = 12.sp
-                    )
-                },
-                leadingIcon = {
-                    Icon(
-                        imageVector = if (item.direction == FriendRequestDirection.Incoming) Icons.Outlined.ArrowDownward else Icons.Outlined.ArrowUpward,
-                        contentDescription = null
-                    )
-                },
-                colors = AssistChipDefaults.assistChipColors(
-                    containerColor = if (item.direction == FriendRequestDirection.Incoming) Color(0xFFFFF7ED) else Color(0xFFE0E7FF)
-                )
+    FriendSectionCard(
+        title = "Incoming requests",
+        subtitle = null
+    ) {
+        if (requests.isEmpty()) {
+            Text(
+                text = "No pending friend requests.",
+                color = Color(0xFF6B7280),
+                fontSize = 13.sp
             )
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                requests.forEach { item ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                color = Color.White.copy(alpha = 0.8f),
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        // 申请人（暂时只显示用户 ID，后面需要的话可以再按 ID 查用户名）
+                        Text(
+                            text = item.requesterName ?: "User #${item.requesterId}",
+                            fontWeight = FontWeight.Medium
+                        )
+
+                        // 信息
+                        Text(
+                            text = item.message,
+                            fontSize = 13.sp,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+
+                        // 时间
+                        Text(
+                            text = "Time: ${formatTimestamp(item.timestamp)}",
+                            fontSize = 11.sp,
+                            color = Color(0xFF9CA3AF)
+                        )
+
+                        // 按钮
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = { onAccept(item.requestId) },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Accept")
+                            }
+                            OutlinedButton(
+                                onClick = { onReject(item.requestId) },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Reject")
+                            }
+                        }
+                    }
+                }
+            }
         }
-        Text(
-            text = "Time: ${formatTimestamp(item.timestamp)}",
-            fontSize = 11.sp,
-            color = Color(0xFF9CA3AF)
-        )
-        actionContent()
     }
 }
 
@@ -545,53 +362,4 @@ private fun formatTimestamp(timestamp: Long?): String {
     } catch (e: Exception) {
         timestamp.toString()
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun FriendScreenPreview() {
-    val sampleState = FriendUiState(
-        isConnected = true,
-        incomingRequests = listOf(
-            FriendRequestItem(
-                requestId = 1,
-                message = "Hi, I'm User1. Let's be friends!",
-                timestamp = System.currentTimeMillis(),
-                status = FriendRequestStatus.Pending,
-                direction = FriendRequestDirection.Incoming,
-                peer = FriendUserSummary(userId = 1, username = "user1")
-            )
-        ),
-        outgoingRequests = listOf(
-            FriendRequestItem(
-                requestId = 2,
-                message = "Let's chat!",
-                timestamp = System.currentTimeMillis(),
-                status = FriendRequestStatus.Pending,
-                direction = FriendRequestDirection.Outgoing,
-                peer = FriendUserSummary(userId = 3, username = "user3")
-            )
-        ),
-        friends = listOf(
-            FriendUserSummary(userId = 2, username = "user2")
-        ),
-        logs = listOf("[12:00:00] ✅ Connected", "[12:00:02] ⬇️ FRIEND_REQUEST_NEW")
-    )
-    FriendScreenContent(
-        navController = rememberNavController(),
-        state = sampleState,
-        receiverIdInput = "2",
-        messageInput = "Let's go!",
-        onReceiverIdChange = {},
-        onMessageChange = {},
-        onSendRequest = {},
-        onAccept = { _ -> },
-        onReject = { _ -> },
-        onResend = { _ -> },
-        onRemoveFriend = { _ -> },
-        onToggleConnection = {},
-        onWsUrlChange = {},
-        onReconnect = {},
-        onBannerDismiss = {}
-    )
 }

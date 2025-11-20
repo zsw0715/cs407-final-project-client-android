@@ -1,51 +1,24 @@
 package com.cs407.knot_client_android.ui.friend
+data class FriendUiState(
+    val isSearching: Boolean = false,
+    val searchedUser: FriendUserSummary? = null,
+    val searchError: String? = null,
+    val incomingRequests: List<FriendRequestItem> = emptyList(),
+    val friends: List<FriendUserSummary> = emptyList()
+)
 
-import androidx.compose.runtime.Immutable
-
-enum class FriendRequestStatus { Pending, Accepted, Rejected }
-
-enum class FriendRequestDirection { Incoming, Outgoing }
-
-@Immutable
 data class FriendUserSummary(
-    val userId: Long?,
-    val username: String?,
-    val avatarUrl: String? = null
-) {
-    val displayName: String
-        get() = when {
-            !username.isNullOrBlank() -> username
-            userId != null -> "User #$userId"
-            else -> "Unknown"
-        }
-}
+    val userId: Long,
+    val username: String,
+    val avatar: String?,
+    val convId: Long?,
+    val createdAtMs: Long?
+)
 
-@Immutable
 data class FriendRequestItem(
     val requestId: Long,
+    val requesterId: Long,
     val message: String,
     val timestamp: Long?,
-    val status: FriendRequestStatus,
-    val direction: FriendRequestDirection,
-    val peer: FriendUserSummary,
-    val convId: Long? = null
+    val requesterName: String? = null
 )
-
-@Immutable
-data class BannerMessage(
-    val text: String,
-    val isError: Boolean = false
-)
-
-@Immutable
-data class FriendUiState(
-    val wsUrl: String = "ws://10.0.2.2:10827/ws",
-    val isConnected: Boolean = false,
-    val currentUserId: Long? = null,
-    val incomingRequests: List<FriendRequestItem> = emptyList(),
-    val outgoingRequests: List<FriendRequestItem> = emptyList(),
-    val friends: List<FriendUserSummary> = emptyList(),
-    val logs: List<String> = emptyList(),
-    val bannerMessage: BannerMessage? = null
-)
-

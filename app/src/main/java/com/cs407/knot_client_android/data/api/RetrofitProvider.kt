@@ -67,4 +67,14 @@ object RetrofitProvider {
     fun createGeocodingService(): GeocodingApiService {
         return GeocodingApiService.create()
     }
+
+    fun createFriendService(baseUrl: String): FriendApiService {
+        return Retrofit.Builder()
+            .baseUrl(baseUrl)
+            .client(createLoggingClient())
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(FriendApiService::class.java)
+    }
+
 }
