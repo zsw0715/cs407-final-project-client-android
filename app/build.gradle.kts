@@ -50,7 +50,10 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.navigation.compose)
-    
+    implementation("androidx.compose.material3:material3:1.2.1")
+    implementation("androidx.compose.material:material-icons-extended:1.6.0")
+
+
     // Mapbox Maps SDK
     implementation("com.mapbox.maps:android:11.16.2")
     // Mapbox Compose Extension
@@ -75,6 +78,12 @@ dependencies {
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
     implementation(libs.androidx.compose.animation.core)
     implementation("io.coil-kt:coil-compose:2.6.0")
+
+    implementation("androidx.compose.material3:material3:1.2.1")
+    implementation("androidx.compose.material:material-icons-extended:1.6.0")
+
+    implementation("androidx.compose.material3:material3:1.2.1")
+    implementation("androidx.compose.material:material-icons-extended:1.6.0")
 
 
     testImplementation(libs.junit)
