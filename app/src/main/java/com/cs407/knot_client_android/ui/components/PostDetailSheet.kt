@@ -739,7 +739,6 @@ private fun PostDetailSheetContent(
                     val closeButtonInteractionSource = remember { MutableInteractionSource() }
                     val isCloseButtonPressed by closeButtonInteractionSource.collectIsPressedAsState()
                     
-                    // Apple-style 双阶段弹性动画
                     val closeButtonScale = remember { Animatable(1f) }
                     
                     LaunchedEffect(isCloseButtonPressed) {
