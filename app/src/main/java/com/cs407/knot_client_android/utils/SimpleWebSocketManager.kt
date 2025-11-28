@@ -16,7 +16,10 @@ import okio.ByteString
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 
-
+/**
+ * 简单的 WebSocket 管理器
+ * 支持连接、断开、发送消息、接收消息、日志记录和心跳
+ */
 class SimpleWebSocketManager {
     private var webSocket: WebSocket? = null
     private val client = OkHttpClient()
@@ -42,46 +45,6 @@ class SimpleWebSocketManager {
     )
     val incoming: SharedFlow<String> = _incoming.asSharedFlow()
 
-//    fun connect(url: String) {
-//        if (webSocket != null) {
-//            addLog("⚠️ 已经连接，请先断开")
-//            return
-//        }
-//
-//        val request = Request.Builder()
-//            .url(url)
-//            .build()
-//
-//        webSocket = client.newWebSocket(request, object : WebSocketListener() {
-//            override fun onOpen(webSocket: WebSocket, response: Response) {
-//                _connectionState.value = true
-//                addLog("✅ 连接成功: $url")
-//            }
-//
-//            override fun onMessage(webSocket: WebSocket, text: String) {
-//                addLog("⬇️ 收到: $text")
-//            }
-//
-//            override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
-//                addLog("⬇️ 收到二进制: ${bytes.hex()}")
-//            }
-//
-//            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-//                addLog("⚠️ 正在关闭: code=$code reason=$reason")
-//            }
-//
-//            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-//                _connectionState.value = false
-//                addLog("❌ 已断开: code=$code reason=$reason")
-//            }
-//
-//            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-//                _connectionState.value = false
-//                addLog("❌ 错误: ${t.message}")
-//            }
-//        })
-//    }
-
     /** 保留原 API：仅连接，不发 AUTH */
     fun connect(url: String) = connect(url, jwt = null)
 
@@ -96,6 +59,9 @@ class SimpleWebSocketManager {
         val request = Request.Builder().url(url).build()
         webSocket = client.newWebSocket(request, object : WebSocketListener() {
 
+            /**
+             * 连接成功
+             */
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 _connectionState.value = true
                 addLog("✅ 连接成功: $url")
@@ -108,6 +74,9 @@ class SimpleWebSocketManager {
                 startHeartbeat()
             }
 
+            /**
+             * 收到消息
+             */
             override fun onMessage(webSocket: WebSocket, text: String) {
                 addLog("⬇️ 收到: $text")
                 // 发射原始消息供其他组件监听
@@ -115,20 +84,32 @@ class SimpleWebSocketManager {
                 _incoming.tryEmit(text)
             }
 
+            /**
+             * 收到二进制消息
+             */
             override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
                 addLog("⬇️ 收到二进制: ${bytes.hex()}")
             }
 
+            /**
+             * 正在关闭
+             */
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
                 addLog("⚠️ 正在关闭: code=$code reason=$reason")
             }
 
+            /**
+             * 已关闭
+             */
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                 _connectionState.value = false
                 addLog("❌ 已断开: code=$code reason=$reason")
                 heartbeatJob?.cancel()
             }
 
+            /**
+             * 连接失败
+             */
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 _connectionState.value = false
                 addLog("❌ 错误: ${t.message}")
@@ -137,7 +118,9 @@ class SimpleWebSocketManager {
         })
     }
 
-
+    /**
+     * 发送消息
+     */
     fun send(message: String) {
         if (webSocket == null || !_connectionState.value) {
             addLog("⚠️ 未连接，无法发送")
@@ -152,33 +135,51 @@ class SimpleWebSocketManager {
         }
     }
 
+    /**
+     * 断开连接
+     */
     fun disconnect() {
         webSocket?.close(1000, "用户主动断开")
         webSocket = null
         _connectionState.value = false
     }
 
+    /**
+     * 清除日志
+     */
     fun clearLogs() {
         _messages.value = emptyList()
     }
 
+    /**
+     * 添加日志
+     */
     private fun addLog(message: String) {
         val timestamp = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
             .format(java.util.Date())
         _messages.value = _messages.value + "[$timestamp] $message"
     }
 
+    /**
+     * 发送 AUTH 消息
+     * {"type":"AUTH","token":"<jwt>"}
+     */
     private fun sendAuth(token: String) {
         val json = gson.toJson(mapOf("type" to "AUTH", "token" to token))
         webSocket?.send(json)
         addLog("⬆️ 发送 AUTH: $json")
     }
 
+    /**
+     * 启动心跳
+     * 每 30 秒发送一次 HEARTBEAT 消息
+     * {"type":"HEARTBEAT"}
+     */
     private fun startHeartbeat() {
         stopHeartbeat()
         heartbeatJob = scope.launch {
             while (isActive) {
-                delay(30_000) // 30s 一次，TTL=90s 足够
+                delay(30_000)
                 val hb = gson.toJson(mapOf("type" to "HEARTBEAT"))
                 webSocket?.send(hb)
                 addLog("⬆️ 发送 HEARTBEAT: $hb")
@@ -186,6 +187,9 @@ class SimpleWebSocketManager {
         }
     }
 
+    /**
+     * 停止心跳
+     */
     private fun stopHeartbeat() {
         heartbeatJob?.cancel()
         heartbeatJob = null

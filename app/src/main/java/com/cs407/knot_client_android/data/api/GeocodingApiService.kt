@@ -1,8 +1,6 @@
 package com.cs407.knot_client_android.data.api
 
 import com.cs407.knot_client_android.data.model.response.GeocodingResponse
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -36,18 +34,5 @@ interface GeocodingApiService {
         @Query("limit") limit: Int = 8,
 //        @Query("types") types: String = "poi"
     ): GeocodingResponse
-
-    companion object {
-        /**
-         * 创建 Geocoding API 实例
-         */
-        fun create(): GeocodingApiService {
-            return Retrofit.Builder()
-                .baseUrl("https://api.mapbox.com/")
-                .addConverterFactory(GsonConverterFactory.create())
-                .build()
-                .create(GeocodingApiService::class.java)
-        }
-    }
 }
 

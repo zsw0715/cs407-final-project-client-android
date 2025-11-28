@@ -3,38 +3,20 @@ package com.cs407.knot_client_android.data.api
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.Query
+import com.cs407.knot_client_android.data.model.response.MessagePageResp
 
-// 单条消息
-data class MessageDto(
-    val msgId: Long,
-    val convId: Long,
-    val senderId: Long,      // ✅ 对应后端 senderId
-    val msgType: Int,
-    val clientMsgId: String,
-    val contentText: String,
-    val createdAt: String    // ✅ 对应后端 createdAt
-)
-
-// 分页数据（在 "data" 里面）
-data class MessagePageDto(
-    val convId: Long,
-    val page: Int,
-    val size: Int,
-    val total: Int,
-    val totalPages: Int,
-    val messageList: List<MessageDto>
-)
-
-// 最外层响应
-data class MessagePageResp(
-    val success: Boolean,
-    val message: String?,
-    val data: MessagePageDto?,
-    val error: String?
-)
-
+/**
+ * 消息 API 服务接口
+ */
 interface MessageApi {
 
+    /**
+     * 获取会话消息，分页
+     * @param authorization Bearer token
+     * @param conversationId 会话 ID
+     * @param page 页码
+     * @param size 每页大小
+     */
     @GET("/api/conversation/messages")
     suspend fun getMessages(
         @Header("Authorization") authorization: String,

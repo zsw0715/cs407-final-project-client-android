@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cs407.knot_client_android.data.api.ConversationApi
-import com.cs407.knot_client_android.data.api.ConversationListResp
+import com.cs407.knot_client_android.data.model.response.ConversationListResp
 import com.cs407.knot_client_android.data.local.TokenStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

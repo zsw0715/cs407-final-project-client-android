@@ -66,7 +66,7 @@ import androidx.compose.material.icons.outlined.Place
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.cs407.knot_client_android.R
-import com.cs407.knot_client_android.data.api.GeocodingApiService
+import com.cs407.knot_client_android.data.api.RetrofitProvider
 import com.cs407.knot_client_android.data.local.MapPreferences
 import com.cs407.knot_client_android.data.model.MapPost
 import com.cs407.knot_client_android.data.model.PostType
@@ -308,7 +308,7 @@ fun MapScreen(
 
     // 创建 Geocoding API (用于反向地理编码)
     val mapboxToken = context.getString(R.string.mapbox_access_token)
-    val geocodingApi = remember { GeocodingApiService.create() }
+    val geocodingApi = remember { RetrofitProvider.createGeocodingService() }
     
     // 用于节流的 Job
     var geocodingJob by remember { mutableStateOf<Job?>(null) }
@@ -351,7 +351,7 @@ fun MapScreen(
                         updatedCache[post.mapPostId] = post
                     }
 
-                    // ★★ 关键：同步到 ViewModel，让 uiState.posts 也有这些帖子
+                    // 关键：同步到 ViewModel，让 uiState.posts 也有这些帖子
                     mapViewModel.addOrUpdatePost(post)
                 }
 
@@ -386,7 +386,7 @@ fun MapScreen(
         }
     }
     
-    // ⚡ 首次加载地图帖子（用户位置获取后）
+    // 首次加载地图帖子（用户位置获取后）
     LaunchedEffect(userLocation) {
         userLocation?.let { location ->
             // 等待一下地图初始化
@@ -398,7 +398,7 @@ fun MapScreen(
         }
     }
 
-    // 🔔 监听 WebSocket 消息（实时推送新帖子 + 更新统计数据）
+    // 监听 WebSocket 消息（实时推送新帖子 + 更新统计数据）
     LaunchedEffect(Unit) {
         mainViewModel.wsManager.rawMessages.collect { message ->
             message?.let {
@@ -606,7 +606,7 @@ fun MapScreen(
         fetchNearbyPosts(center.latitude(), center.longitude(), zoom)
     }
     
-    // ⚡ 直接显示地图，无动画
+    // 直接显示地图，无动画
     // 地图会在 MainScreen 加载时就开始初始化
     Box(modifier = Modifier.fillMaxSize()) {
         // 地图内容 - 使用 MapStyle + PointAnnotationGroup Clustering

@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
-import com.cs407.knot_client_android.data.api.MessageDto
+import com.cs407.knot_client_android.data.model.response.MessageDto
 import com.cs407.knot_client_android.data.local.TokenStore
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update

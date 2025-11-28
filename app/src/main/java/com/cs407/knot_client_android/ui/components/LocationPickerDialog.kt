@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.cs407.knot_client_android.R
-import com.cs407.knot_client_android.data.api.GeocodingApiService
+import com.cs407.knot_client_android.data.api.RetrofitProvider
 import com.mapbox.geojson.Point
 import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.MapboxExperimental
@@ -67,7 +67,7 @@ fun LocationPickerDialog(
     val mapboxToken = remember {
         context.getString(R.string.mapbox_access_token)
     }
-    val geocodingApi = remember { GeocodingApiService.create() }
+    val geocodingApi = remember { RetrofitProvider.createGeocodingService() }
 
     var searchQuery by remember { mutableStateOf(TextFieldValue("")) }
 
