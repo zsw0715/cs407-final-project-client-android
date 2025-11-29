@@ -7,5 +7,6 @@ data class UpdateUserSettingsRequest(
     val gender: String,
     val birthdate: String,
     val privacyLevel: String,
-    val discoverable: Boolean
+    val discoverable: Boolean,
+    val avatarUrl: String?
 )

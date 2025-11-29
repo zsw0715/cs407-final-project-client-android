@@ -62,6 +62,19 @@ object RetrofitProvider {
     }
 
     /**
+     * 创建 S3 预签名上传 API 服务
+     * @param baseUrl 后端地址，模拟器使用 http://10.0.2.2:8080
+     */
+    fun createS3Service(baseUrl: String): S3ApiService {
+        return Retrofit.Builder()
+            .baseUrl(baseUrl)
+            .client(createLoggingClient())
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(S3ApiService::class.java)
+    }
+
+    /**
      * 创建 Geocoding API 服务
      * @param baseUrl Mapbox API 地址，默认为 https://api.mapbox.com/
      */

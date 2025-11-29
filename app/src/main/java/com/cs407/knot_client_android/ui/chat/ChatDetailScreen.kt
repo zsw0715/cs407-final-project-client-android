@@ -40,11 +40,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.cs407.knot_client_android.navigation.Screen
+import com.cs407.knot_client_android.data.repository.UserRepository
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.Image
+import coil.compose.rememberAsyncImagePainter
 import java.time.Duration
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -125,13 +130,35 @@ fun ChatDetailScreen(
         val listState = rememberLazyListState()
 
         // 当前用户昵称（用于右侧消息头像），优先从 TokenStore 取；拿不到就用 "Me"
-        val context = androidx.compose.ui.platform.LocalContext.current
+        val context = LocalContext.current
         val selfName = remember {
             com.cs407.knot_client_android.data.local.TokenStore(context).getUsername()
                 ?: "Me"
         }
         // 单聊场景下，标题就是对方用户名
         val otherName = state.title
+
+        // 头像 URL（自己 & 对方），从用户相关接口中获取
+        var selfAvatarUrl by remember { mutableStateOf<String?>(null) }
+        var otherAvatarUrl by remember { mutableStateOf<String?>(null) }
+
+        LaunchedEffect(Unit) {
+            val repo = UserRepository(context.applicationContext, baseUrl = "http://10.0.2.2:8080")
+            try {
+                // 自己的头像
+                val settings = repo.getUserSettings()
+                selfAvatarUrl = settings?.avatarUrl
+            } catch (_: Exception) {
+                // 忽略错误，保持占位头像
+            }
+            try {
+                // 对方头像：按用户名查
+                val info = repo.getUserInfoByUsername(otherName)
+                otherAvatarUrl = info.avatarUrl
+            } catch (_: Exception) {
+                // 忽略错误，保持占位头像
+            }
+        }
 
         val timeFormatter = remember {
             DateTimeFormatter.ofPattern("HH:mm")
@@ -177,7 +204,9 @@ fun ChatDetailScreen(
                         MessageBubble(
                             msg = msg,
                             selfName = selfName,
-                            otherName = otherName
+                            otherName = otherName,
+                            selfAvatarUrl = selfAvatarUrl,
+                            otherAvatarUrl = otherAvatarUrl
                         )
                     }
                 }
@@ -278,9 +307,12 @@ fun ChatDetailScreen(
 private fun MessageBubble(
     msg: MessageUi,
     selfName: String,
-    otherName: String
+    otherName: String,
+    selfAvatarUrl: String?,
+    otherAvatarUrl: String?
 ) {
     val displayName = if (msg.isMine) selfName else otherName
+    val avatarUrl = if (msg.isMine) selfAvatarUrl else otherAvatarUrl
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -288,7 +320,7 @@ private fun MessageBubble(
         verticalAlignment = Alignment.Bottom
     ) {
         if (!msg.isMine) {
-            MessageAvatar(displayName)
+            MessageAvatar(displayName, avatarUrl)
             Spacer(modifier = Modifier.width(10.dp))
         }
 
@@ -311,27 +343,38 @@ private fun MessageBubble(
 
         if (msg.isMine) {
             Spacer(modifier = Modifier.width(10.dp))
-            MessageAvatar(displayName)
+            MessageAvatar(displayName, avatarUrl)
         }
     }
 }
 
 @Composable
-private fun MessageAvatar(name: String) {
-    val initial = name.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
-    Box(
-        modifier = Modifier
-            .size(40.dp) // 头像更大一些
-            .clip(CircleShape)
-            .background(Color(0xFFE5E7EB)),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = initial,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color(0xFF6B7280)
+private fun MessageAvatar(name: String, avatarUrl: String?) {
+    if (!avatarUrl.isNullOrBlank()) {
+        Image(
+            painter = rememberAsyncImagePainter(model = avatarUrl),
+            contentDescription = null,
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape),
+            contentScale = ContentScale.Crop
         )
+    } else {
+        val initial = name.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
+        Box(
+            modifier = Modifier
+                .size(40.dp) // 头像更大一些
+                .clip(CircleShape)
+                .background(Color(0xFFE5E7EB)),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = initial,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF6B7280)
+            )
+        }
     }
 }
 

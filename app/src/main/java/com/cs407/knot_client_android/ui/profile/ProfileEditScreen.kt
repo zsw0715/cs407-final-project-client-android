@@ -85,6 +85,10 @@ import android.graphics.RenderEffect
 import android.graphics.Shader
 import androidx.compose.material.icons.filled.Create
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import coil.compose.rememberAsyncImagePainter
 
 @Composable
 fun ProfileEditScreen(
@@ -92,6 +96,7 @@ fun ProfileEditScreen(
 ) {
     val profileVm = viewModel<ProfileViewModel>()
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     
     // 收集用户设置数据
     val userSettings by profileVm.userSettings.collectAsState()
@@ -106,6 +111,7 @@ fun ProfileEditScreen(
     var birthdate by remember { mutableStateOf("") }
     var privacyLevel by remember { mutableStateOf("PUBLIC") }
     var discoverable by remember { mutableStateOf(true) }
+    var avatarUrl by remember { mutableStateOf<String?>(null) }
     
     // Dropdown 状态
     var genderExpanded by remember { mutableStateOf(false) }
@@ -126,6 +132,7 @@ fun ProfileEditScreen(
             birthdate = settings.birthdate ?: ""
             privacyLevel = settings.privacyLevel ?: "PUBLIC"
             discoverable = settings.discoverable ?: true
+            avatarUrl = settings.avatarUrl
         }
     }
     
@@ -137,6 +144,30 @@ fun ProfileEditScreen(
         error?.let {
             snackbarHostState.showSnackbar(it)
             profileVm.clearError()
+        }
+    }
+
+    // 头像选择器：从相册选择图片后，上传到 S3 并更新 avatarUrl
+    val avatarPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            scope.launch {
+                try {
+                    val resolver = context.contentResolver
+                    val type = resolver.getType(uri) ?: "image/jpeg"
+                    val bytes = resolver.openInputStream(uri)?.use { it.readBytes() }
+                    if (bytes == null) {
+                        snackbarHostState.showSnackbar("Failed to read selected image")
+                        return@launch
+                    }
+                    val uploadedUrl = profileVm.uploadAvatarToS3(bytes, type)
+                    avatarUrl = uploadedUrl
+                    snackbarHostState.showSnackbar("Avatar uploaded, don't forget to SAVE")
+                } catch (e: Exception) {
+                    snackbarHostState.showSnackbar("Failed to upload avatar: ${e.message}")
+                }
+            }
         }
     }
 
@@ -347,7 +378,8 @@ fun ProfileEditScreen(
                                     gender = gender,
                                     birthdate = birthdate,
                                     privacyLevel = privacyLevel,
-                                    discoverable = discoverable
+                                    discoverable = discoverable,
+                                    avatarUrl = avatarUrl
                                 )
                                 
                                 if (success) {
@@ -385,24 +417,29 @@ fun ProfileEditScreen(
                 modifier = Modifier
                     .size(140.dp),
                 contentAlignment = Alignment.Center
-            ) {
-                // 头像主体
-                Box(
-                    modifier = Modifier
-                        .size(140.dp)
-                        .clip(CircleShape)
-                        .border(width = 3.dp, color = Color.White.copy(alpha = 0.3f), shape = CircleShape)
-                        .background(Color.White.copy(alpha = 0.15f))
                 ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.user_avatar),
-                        contentDescription = "Profile Avatar",
+                    // 头像主体
+                    Box(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-                }
+                            .size(140.dp)
+                            .clip(CircleShape)
+                            .border(width = 3.dp, color = Color.White.copy(alpha = 0.3f), shape = CircleShape)
+                            .background(Color.White.copy(alpha = 0.15f))
+                    ) {
+                        val painter = if (avatarUrl.isNullOrBlank()) {
+                            painterResource(id = R.drawable.user_avatar)
+                        } else {
+                            rememberAsyncImagePainter(model = avatarUrl)
+                        }
+                        Image(
+                            painter = painter,
+                            contentDescription = "Profile Avatar",
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
                 
                 // 📷 相机图标（右上角）
                 Box(
@@ -414,7 +451,8 @@ fun ProfileEditScreen(
                         .background(Color(0xFF636EF1))
                         .border(2.dp, Color.White, CircleShape)
                         .clickable {
-                            // TODO: 处理头像上传
+                            // 打开系统相册选择图片
+                            avatarPickerLauncher.launch("image/*")
                         },
                     contentAlignment = Alignment.Center
                 ) {

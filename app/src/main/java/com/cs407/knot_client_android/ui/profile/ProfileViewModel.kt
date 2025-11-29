@@ -56,12 +56,30 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
     /**
      * 更新用户设置
      */
-    suspend fun updateUserSettings(nickname: String, statusMessage: String, email: String, gender: String, birthdate: String, privacyLevel: String, discoverable: Boolean): Boolean {
+    suspend fun updateUserSettings(
+        nickname: String,
+        statusMessage: String,
+        email: String,
+        gender: String,
+        birthdate: String,
+        privacyLevel: String,
+        discoverable: Boolean,
+        avatarUrl: String?
+    ): Boolean {
         return try {
             _loading.value = true
             _error.value = null
-            
-            val request = UpdateUserSettingsRequest(nickname, statusMessage, email, gender, birthdate, privacyLevel, discoverable)
+
+            val request = UpdateUserSettingsRequest(
+                nickname = nickname,
+                statusMessage = statusMessage,
+                email = email,
+                gender = gender,
+                birthdate = birthdate,
+                privacyLevel = privacyLevel,
+                discoverable = discoverable,
+                avatarUrl = avatarUrl
+            )
             val response = repository.updateUserSettings(request)
             
             // 更新本地状态
@@ -73,6 +91,25 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
             _error.value = e.message ?: "Failed to update user settings"
             _loading.value = false
             false
+        }
+    }
+
+    /**
+     * 上传头像到 S3 并返回可访问的 URL
+     */
+    suspend fun uploadAvatarToS3(bytes: ByteArray, contentType: String): String {
+        return try {
+            _loading.value = true
+            _error.value = null
+            val url = repository.uploadAvatarToS3(bytes, contentType)
+            // 更新本地 userSettings 中的头像，以便其他页面可以使用
+            _userSettings.value = _userSettings.value?.copy(avatarUrl = url)
+            _loading.value = false
+            url
+        } catch (e: Exception) {
+            _error.value = e.message ?: "Failed to upload avatar"
+            _loading.value = false
+            throw e
         }
     }
 }

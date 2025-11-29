@@ -71,6 +71,7 @@ import android.graphics.Shader
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
+import coil.compose.rememberAsyncImagePainter
 
 
 @Composable
@@ -350,15 +351,38 @@ fun ProfileScreen(
                     .background(Color.White.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
-                // user avatar
-                Image(
-                    painter = painterResource(id = R.drawable.user_avatar),
-                    contentDescription = "Profile",
-                    modifier = Modifier
-                        .size(180.dp)
-                        .clip(CircleShape),
-                    contentScale = ContentScale.Crop
-                )
+                val avatarUrl = userSettings?.avatarUrl
+                if (!avatarUrl.isNullOrBlank()) {
+                    // 有头像 URL：加载网络头像
+                    Image(
+                        painter = rememberAsyncImagePainter(model = avatarUrl),
+                        contentDescription = "Profile",
+                        modifier = Modifier
+                            .size(180.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    // 无头像：使用首字母圆形占位（样式参考 ChatDetailScreen 的 MessageAvatar）
+                    val initial = (userSettings?.nickname ?: "U")
+                        .firstOrNull()
+                        ?.uppercaseChar()
+                        ?.toString() ?: "U"
+                    Box(
+                        modifier = Modifier
+                            .size(180.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFE5E7EB)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = initial,
+                            fontSize = 42.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF6B7280)
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))

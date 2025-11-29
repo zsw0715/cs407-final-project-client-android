@@ -7,6 +7,15 @@ import com.cs407.knot_client_android.data.model.request.UpdateUserSettingsReques
 import com.cs407.knot_client_android.data.model.response.FriendRequestView
 import com.cs407.knot_client_android.data.model.response.UserInfo
 import com.cs407.knot_client_android.data.model.response.UserSettings
+import com.cs407.knot_client_android.data.model.request.S3PresignRequest
+import com.cs407.knot_client_android.data.model.response.S3PresignData
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.logging.HttpLoggingInterceptor
 
 /**
  * 用户仓库
@@ -14,6 +23,7 @@ import com.cs407.knot_client_android.data.model.response.UserSettings
  */
 class UserRepository(context: Context, baseUrl: String) {
     private val apiService = RetrofitProvider.createUserService(baseUrl)
+    private val s3Service = RetrofitProvider.createS3Service(baseUrl)
     private val tokenStore = TokenStore(context)
 
     /**
@@ -51,6 +61,56 @@ class UserRepository(context: Context, baseUrl: String) {
         }
         else {
             error(response.message ?: response.error ?: "Failed to update user settings")
+        }
+    }
+
+    /**
+     * 上传头像到 S3 并返回可访问的 URL
+     */
+    suspend fun uploadAvatarToS3(bytes: ByteArray, contentType: String): String {
+        return withContext(Dispatchers.IO) {
+            val accessToken = tokenStore.getAccessToken()
+            if (accessToken.isNullOrEmpty()) {
+                error("No access token found. Please login first.")
+            }
+
+            // 1. 请求后端预签名 URL
+            val presignResp = s3Service.getPresignUrl(
+                authorization = "Bearer $accessToken",
+                request = S3PresignRequest(
+                    filename = "avatar_${System.currentTimeMillis()}.jpg",
+                    contentType = contentType
+                )
+            )
+
+            val data: S3PresignData = presignResp.data
+                ?: error(presignResp.message ?: presignResp.error ?: "Failed to get S3 presign URL")
+
+            val uploadUrl = data.uploadUrl
+
+            // 2. 使用 OkHttp PUT 上传到 S3（带日志，方便你在 Logcat 里看）
+            val logging = HttpLoggingInterceptor().apply {
+                level = HttpLoggingInterceptor.Level.BODY
+            }
+            val client = OkHttpClient.Builder()
+                .addInterceptor(logging)
+                .build()
+
+            val mediaType = contentType.toMediaType()
+            val body = bytes.toRequestBody(mediaType)
+            val request = Request.Builder()
+                .url(uploadUrl)
+                .put(body)
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    error("Failed to upload avatar to S3: HTTP ${response.code} ${response.message}")
+                }
+            }
+
+            // 预签名 URL 去掉 query 参数后就是文件的公开访问地址
+            uploadUrl.substringBefore("?")
         }
     }
 
