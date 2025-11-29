@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
@@ -38,6 +39,14 @@ import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
+import android.graphics.RenderEffect
+import android.graphics.Shader
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.graphicsLayer
 
 @Composable
 fun ChatScreen(
@@ -136,50 +145,112 @@ private fun TransparentHeaderBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 4.dp, start = 4.dp, end = 4.dp),
+                .padding(top = 12.dp, start = 4.dp, end = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             var menuExpanded by remember { mutableStateOf(false) }
 
-            Box(
-                modifier = Modifier
-                    .size(46.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(Color.White.copy(alpha = 0.6f))
-                    .border(
-                        width = 1.5.dp,
-                        color = Color(0xFFBDBDBD),
-                        shape = RoundedCornerShape(50)
+            // 搜索按钮动画状态
+            val interactionSource = remember { MutableInteractionSource() }
+            val isPressed by interactionSource.collectIsPressedAsState()
+            val scale = remember { Animatable(1f) }
+
+            LaunchedEffect(isPressed) {
+                if (isPressed) {
+                    scale.animateTo(
+                        targetValue = 1.2f,
+                        animationSpec = tween(durationMillis = 170, easing = LinearOutSlowInEasing)
                     )
-                    .clickable {  menuExpanded = true },
+                } else {
+                    scale.animateTo(
+                        targetValue = 0.88f,
+                        animationSpec = tween(durationMillis = 155, easing = FastOutLinearInEasing)
+                    )
+                    scale.animateTo(
+                        targetValue = 1f,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)
+                    )
+                }
+            }
+
+            Box(
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = "Search",
-                    tint = Color(0xFF666666),
-                    modifier = Modifier.size(22.dp)
+                // 毛玻璃背景层
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clip(RoundedCornerShape(50))
+                        .graphicsLayer {
+                            renderEffect = RenderEffect
+                                .createBlurEffect(40f, 40f, Shader.TileMode.CLAMP)
+                                .asComposeRenderEffect()
+                        }
+                        .background(Color.White.copy(alpha = 0.65f))
                 )
+
+                // 主按钮
+                Box(
+                    modifier = Modifier
+                        .size(46.dp)
+                        .scale(scale.value)
+                        .clip(RoundedCornerShape(50))
+                        .background(Color.White.copy(alpha = 0.6f))
+                        .clickable(
+                            interactionSource = interactionSource,
+                            indication = null,
+                            onClick = { menuExpanded = true }
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = if (isPressed) Color(0xFF636EF1) else Color(0xFF666666),
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
             }
 
             DropdownMenu(
                 expanded = menuExpanded,
-                onDismissRequest = { menuExpanded = false }
+                onDismissRequest = { menuExpanded = false },
+                shape = RoundedCornerShape(32.dp),
+                modifier = Modifier.padding(horizontal = 16.dp)
             ) {
-                DropdownMenuItem(
-                    text = { Text("Search") },
-                    onClick = {
-                        menuExpanded = false
-                        onStartSearch()
-                    }
-                )
-                DropdownMenuItem(
-                    text = { Text("Add group conversation") },
-                    onClick = {
-                        menuExpanded = false
-                        onAddGroup()
-                    }
-                )
+                // 自定义无波纹菜单项：Search
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            menuExpanded = false
+                            onStartSearch()
+                        }
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = "Search")
+                }
+
+                // 自定义无波纹菜单项：Add group conversation
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            menuExpanded = false
+                            onAddGroup()
+                        }
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = "Add group conversation")
+                }
             }
 
             Spacer(Modifier.weight(1f))
@@ -196,7 +267,7 @@ private fun TransparentHeaderBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 4.dp, start = 4.dp, end = 4.dp),
+                .padding(top = 12.dp, start = 4.dp, end = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onCloseSearch) {
@@ -213,6 +284,7 @@ private fun TransparentHeaderBar(
                 onValueChange = onQueryChange,
                 placeholder = { Text("Search username") },
                 singleLine = true,
+                shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth(),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.White.copy(alpha = 0.95f),
@@ -243,17 +315,43 @@ private fun ConversationCard(
             .clip(RoundedCornerShape(26.dp))
             .background(Color.White.copy(alpha = 0.9f))
             .padding(12.dp)
-            .clickable { onOpenConversation(item) }  // 之后需要跳转时再打开
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                // onClick = { onOpenConversation(item) }
+            ) {
+                onOpenConversation(item)
+            }  // 之后需要跳转时再打开
     ) {
-        val avatar = item.avatarUrl ?: "https://picsum.photos/seed/${item.id}/96/96"
-        Image(
-            painter = rememberAsyncImagePainter(model = avatar),
-            contentDescription = null,
-            modifier = Modifier
-                .size(58.dp)
-                .clip(RoundedCornerShape(14.dp)),
-            contentScale = ContentScale.Crop
-        )
+        val avatarUrl = item.avatarUrl
+        if (avatarUrl != null) {
+            // 有头像地址：正常加载网络头像
+            Image(
+                painter = rememberAsyncImagePainter(model = avatarUrl),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(58.dp)
+                    .clip(RoundedCornerShape(14.dp)),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            // 无头像：用名字首字母生成圆形头像（仿照 FriendSelectionItem）
+            val initial = item.displayTitle.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
+            Box(
+                modifier = Modifier
+                    .size(58.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFE5E7EB)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = initial,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF6B7280)
+                )
+            }
+        }
 
         Spacer(Modifier.width(12.dp))
 

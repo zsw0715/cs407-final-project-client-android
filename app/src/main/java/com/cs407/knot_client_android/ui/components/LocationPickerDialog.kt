@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,6 +19,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import com.mapbox.maps.extension.compose.style.MapStyle
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -26,6 +29,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.cs407.knot_client_android.R
 import com.cs407.knot_client_android.data.api.RetrofitProvider
 import com.mapbox.geojson.Point
@@ -219,12 +223,15 @@ fun LocationPickerDialog(
         }
     }
 
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         Surface(
             modifier = modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.9f),
-            shape = RoundedCornerShape(24.dp),
+                .fillMaxWidth(0.95f)
+                .fillMaxHeight(0.99f),
+            shape = RoundedCornerShape(48.dp),
             color = Color(0xFFF8F6F4)
         ) {
             Column(
@@ -260,7 +267,7 @@ fun LocationPickerDialog(
                         Icon(Icons.Default.Search, "Search")
                     },
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(16.dp),
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.White,
                         unfocusedContainerColor = Color.White,
@@ -271,19 +278,26 @@ fun LocationPickerDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(200.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(16.dp))
+                        .clipToBounds()
                         .background(Color(0xFFE8EAF6))
                 ) {
                     MapboxMap(
                         modifier = Modifier.fillMaxSize(),
                         mapViewportState = mapViewportState,
                         style = {
-                            GenericStyle(style = Style.MAPBOX_STREETS)
+                            MapStyle(style = Style.MAPBOX_STREETS)
                         },
+                        compass = {},
+                        logo = {},
+                        scaleBar = {},
+                        attribution = {},
                         onMapClickListener = OnMapClickListener { point ->
                             selectedPoint = point
                             selectedLocation = Location(
@@ -319,7 +333,7 @@ fun LocationPickerDialog(
                 selectedLocation?.let { location ->
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = RoundedCornerShape(16.dp),
                         color = Color(0xFF636EF1).copy(alpha = 0.1f),
                         border = BorderStroke(1.dp, Color(0xFF636EF1).copy(alpha = 0.2f))
                     ) {
@@ -396,7 +410,7 @@ fun LocationPickerDialog(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .padding(16.dp),
-                                contentAlignment = Alignment.Center
+                                    contentAlignment = Alignment.Center
                             ) {
                                 val msg = if (searchQuery.text.isNotBlank()) {
                                     "No results for \"${searchQuery.text}\""
@@ -459,7 +473,7 @@ fun LocationPickerDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(24.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFF636EF1)
                     ),
@@ -485,8 +499,12 @@ private fun RecommendedLocationItem(
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            ),
+        shape = RoundedCornerShape(24.dp),
         color = Color.White,
         border = BorderStroke(1.dp, Color(0xFFE5E7EB))
     ) {

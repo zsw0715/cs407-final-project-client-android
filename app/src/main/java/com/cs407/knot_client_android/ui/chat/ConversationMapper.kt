@@ -19,8 +19,16 @@ fun ConversationDto.toUi(): ConversationUi = ConversationUi(
     id = convId,
     convType = convType,
     creatorId = creatorId,
-    displayTitle = (title?.takeIf { it.isNotBlank() } ?: creatorId.toString()),
-    avatarUrl = avatarUrl,
+    // 先支持单聊：优先展示对端用户名；否则回退到 title / 创建者 ID
+    displayTitle = when (convType) {
+        1 -> otherUserName ?: (title?.takeIf { it.isNotBlank() } ?: creatorId.toString())
+        else -> title?.takeIf { it.isNotBlank() } ?: creatorId.toString()
+    },
+    // 单聊优先使用 otherUserAvatar，将来群聊可以用 groupAvatar
+    avatarUrl = when (convType) {
+        1 -> otherUserAvatar
+        else -> groupAvatar
+    },
     lastMsgPreview = lastMsgPreview,
     lastMsgTimeIso = lastMsgTime
 )

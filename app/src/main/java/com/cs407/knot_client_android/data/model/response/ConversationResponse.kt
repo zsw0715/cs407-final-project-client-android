@@ -5,9 +5,16 @@ data class ConversationDto(
     val convType: Int,
     val title: String?,
     val creatorId: Long,
-    val avatarUrl: String?,
+    val otherUserId: Long?,
+    val otherUserName: String?,
+    val otherUserAvatar: String?,
+    val selfUserId: Long?,
+    val selfUserName: String?,
+    val selfUserAvatar: String?,
+    val groupAvatar: String?,
+    val memberCount: Int?,
     val lastMsgPreview: String?,
-    val lastMsgType: Int,
+    val lastMsgType: Int?,
     val lastMsgTime: String?,
     val updatedAt: String?
 )

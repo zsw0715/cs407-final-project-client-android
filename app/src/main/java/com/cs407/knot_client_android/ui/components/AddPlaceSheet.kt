@@ -10,7 +10,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -49,6 +48,8 @@ import com.cs407.knot_client_android.data.model.MapPostCreateMessage
 import com.mapbox.geojson.Point
 import kotlinx.coroutines.launch
 import java.util.UUID
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.platform.LocalContext
 
 data class Friend(
     val id: String,
@@ -100,19 +101,35 @@ fun AddPlaceSheet(
     var currentMode by remember { mutableStateOf(SheetMode.FORM) }
     var showLocationPicker by remember { mutableStateOf(false) }
 
-    // Mock 朋友列表（实际应从API获取）
-    val friends = remember {
-        listOf(
-            Friend("1", "Jian"),
-            Friend("2", "Luis"),
-            Friend("3", "AG"),
-            Friend("4", "JC"),
-            Friend("5", "Len chen"),
-            Friend("6", "sanltun soHo"),
-            Friend("7", "aoyang"),
-            Friend("8", "Nali atio"),
-            Friend("9", "ka Kobaynshi")
-        )
+    // API & Token
+    val context = LocalContext.current
+    val tokenStore = remember { com.cs407.knot_client_android.data.local.TokenStore(context) }
+    val friendApiService = remember {
+        com.cs407.knot_client_android.data.api.RetrofitProvider.createFriendService("http://10.0.2.2:8080")
+    }
+
+    // 朋友列表状态
+    var friends by remember { mutableStateOf(emptyList<Friend>()) }
+
+    // 加载朋友列表
+    LaunchedEffect(Unit) {
+        val token = tokenStore.getAccessToken()
+        if (token != null) {
+            try {
+                val response = friendApiService.getFriends("Bearer $token")
+                if (response.success && response.data != null) {
+                    friends = response.data.map { summary ->
+                        Friend(
+                            id = summary.userId.toString(),
+                            name = summary.username,
+                            avatarUrl = summary.avatar
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
 
     // 同步 shareType 和 mode
@@ -236,7 +253,8 @@ fun AddPlaceSheet(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(28.dp)
+                    .padding(top = 0.dp)
+                    .padding(horizontal = 28.dp)
             ) {
                 // 顶部拖动指示器 - 可以拖动关闭
                 Column(
@@ -267,7 +285,9 @@ fun AddPlaceSheet(
                 ) {
                     Spacer(modifier = Modifier.height(28.dp))
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -313,7 +333,7 @@ fun AddPlaceSheet(
                             }
                         }
 
-                        Box {
+                        Box(modifier = Modifier.offset(y = (-12).dp)) {
                             Box(
                                 modifier = Modifier
                                     .size(56.dp)
@@ -513,8 +533,9 @@ private fun FormContent(
             value = title,
             onValueChange = onTitleChange,
             modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
             placeholder = { Text("Enter title...") },
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(16.dp),
             colors = TextFieldDefaults.colors(
                 focusedContainerColor = Color.Transparent,
                 unfocusedContainerColor = Color.Transparent,
@@ -538,8 +559,12 @@ private fun FormContent(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { onLocationPickerRequest() },
-            shape = RoundedCornerShape(12.dp),
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = { onLocationPickerRequest() }
+                ),
+            shape = RoundedCornerShape(16.dp),
             color = Color.White,
             border = BorderStroke(1.dp, Color(0xFFE5E7EB))
         ) {
@@ -671,7 +696,11 @@ private fun FormContent(
                         .clip(RoundedCornerShape(12.dp))
                         .background(Color.White)
                         .border(2.dp, Color(0xFFE5E7EB), RoundedCornerShape(12.dp))
-                        .clickable(onClick = onAddPhoto),
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onAddPhoto
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -739,7 +768,11 @@ private fun FriendSelectionItem(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onToggle),
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onToggle
+            ),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
@@ -828,7 +861,11 @@ private fun ShareTypeSlider(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
-                            .clickable { onTypeSelected(ShareType.ALL_FRIENDS) },
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = { onTypeSelected(ShareType.ALL_FRIENDS) }
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -842,7 +879,11 @@ private fun ShareTypeSlider(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
-                            .clickable { onTypeSelected(ShareType.SELECTED_FRIENDS) },
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = { onTypeSelected(ShareType.SELECTED_FRIENDS) }
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -873,7 +914,7 @@ private fun PostButton(
         modifier = modifier
             .fillMaxWidth()
             .height(56.dp),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(32.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = Color(0xFF636EF1),
             disabledContainerColor = Color(0xFF9B9B9B).copy(alpha = 0.3f)
