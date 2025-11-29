@@ -1,26 +1,31 @@
 package com.cs407.knot_client_android.navigation
 
-import androidx.compose.runtime.Composable
-import androidx.navigation.NavHostController
-import androidx.navigation.NavType
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
-import com.cs407.knot_client_android.ui.splash.SplashScreen
-import com.cs407.knot_client_android.ui.login.LoginScreen
-import com.cs407.knot_client_android.ui.main.MainScreen
-import com.cs407.knot_client_android.ui.friend.FriendScreen
-import com.cs407.knot_client_android.ui.debug.DebugScreen
-import com.cs407.knot_client_android.ui.profile.ProfileEditScreen
 import android.net.Uri
-import android.util.Log
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import com.cs407.knot_client_android.data.local.TokenStore
 import com.cs407.knot_client_android.ui.chat.ChatDetailRoute
+import com.cs407.knot_client_android.ui.debug.DebugScreen
+import com.cs407.knot_client_android.ui.friend.FriendScreen
+import com.cs407.knot_client_android.ui.login.LoginScreen
+import com.cs407.knot_client_android.ui.main.MainScreen
 import com.cs407.knot_client_android.ui.main.MainViewModel
+import com.cs407.knot_client_android.ui.profile.ProfileEditScreen
+import com.cs407.knot_client_android.ui.splash.SplashScreen
+import com.google.accompanist.navigation.animation.AnimatedNavHost
+import com.google.accompanist.navigation.animation.composable
+import com.google.accompanist.navigation.animation.rememberAnimatedNavController
 
 /**
  * 定义应用的导航图
@@ -47,11 +52,12 @@ sealed class Screen(val route: String) {
 }
 
 // 主要的 Navigation 设置函数
+@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun SetupNavGraph(
-    navController: NavHostController = rememberNavController()
+    navController: NavHostController = rememberAnimatedNavController()
 ) {
-    NavHost(
+    AnimatedNavHost(
         navController = navController,
         startDestination = Screen.Splash.route  // 从启动页开始
     ) {
@@ -93,7 +99,35 @@ fun SetupNavGraph(
             arguments = listOf(
                 navArgument("convId") { type = NavType.LongType },
                 navArgument("title") { type = NavType.StringType }
-            )
+            ),
+            enterTransition = {
+                // 从会话列表进入详情：新页面从右滑入
+                slideInHorizontally(
+                    initialOffsetX = { fullWidth -> fullWidth },
+                    animationSpec = tween(320)
+                ) + fadeIn(animationSpec = tween(320))
+            },
+            exitTransition = {
+                // 进入详情时，列表页明显左移并淡出，模拟微信 push 效果
+                slideOutHorizontally(
+                    targetOffsetX = { fullWidth -> fullWidth / 3 },
+                    animationSpec = tween(320)
+                ) + fadeOut(animationSpec = tween(240))
+            },
+            popEnterTransition = {
+                // 从详情返回：列表页从右侧淡入滑回（与下面 popExit 形成反向配合）
+                slideInHorizontally(
+                    initialOffsetX = { fullWidth -> fullWidth / 3 },
+                    animationSpec = tween(320)
+                ) + fadeIn(animationSpec = tween(320))
+            },
+            popExitTransition = {
+                // 返回时，详情页向左滑出并淡出，让用户感觉“回到左边的列表页”
+                slideOutHorizontally(
+                    targetOffsetX = { fullWidth -> fullWidth },
+                    animationSpec = tween(320)
+                ) + fadeOut(animationSpec = tween(240))
+            }
         ) { backStackEntry ->
             val convId = backStackEntry.arguments?.getLong("convId")!!
             val title = backStackEntry.arguments?.getString("title") ?: "Chat"

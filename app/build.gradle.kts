@@ -53,6 +53,8 @@ dependencies {
     implementation("androidx.compose.material3:material3:1.2.1")
     implementation("androidx.compose.material:material-icons-extended:1.6.0")
 
+    // Animated navigation
+    implementation("com.google.accompanist:accompanist-navigation-animation:0.36.0")
 
     // Mapbox Maps SDK
     implementation("com.mapbox.maps:android:11.16.2")
