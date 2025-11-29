@@ -145,7 +145,7 @@ private fun TransparentHeaderBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 12.dp, start = 4.dp, end = 12.dp),
+                .padding(top = 16.dp, start = 4.dp, end = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             var menuExpanded by remember { mutableStateOf(false) }
@@ -267,7 +267,7 @@ private fun TransparentHeaderBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 12.dp, start = 4.dp, end = 12.dp),
+                .padding(top = 16.dp, start = 4.dp, end = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onCloseSearch) {
