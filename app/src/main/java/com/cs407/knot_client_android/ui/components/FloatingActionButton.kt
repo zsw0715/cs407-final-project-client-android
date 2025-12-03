@@ -30,7 +30,9 @@ import androidx.compose.ui.unit.dp
 fun FloatingActionButton(
     icon: ImageVector?,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    containerSize: androidx.compose.ui.unit.Dp = 70.dp,
+    iconSize: androidx.compose.ui.unit.Dp = 30.dp
 ) {
     // 如果没有图标，不显示按钮
     if (icon == null) return
@@ -77,7 +79,7 @@ fun FloatingActionButton(
         // 毛玻璃背景层 - Android 原生系统级模糊
         Box(
             modifier = Modifier
-                .size(70.dp)
+                .size(containerSize)
                 .clip(CircleShape)
                 .graphicsLayer {
                     renderEffect = RenderEffect
@@ -90,7 +92,7 @@ fun FloatingActionButton(
         // 主按钮
         Box(
             modifier = Modifier
-                .size(70.dp)
+                .size(containerSize)
                 .scale(scale.value)
                 .border(
                     width = 1.dp,
@@ -116,7 +118,7 @@ fun FloatingActionButton(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                modifier = Modifier.size(30.dp),
+                modifier = Modifier.size(iconSize),
                 tint = if (isPressed) 
                     Color(0xFF636EF1) // 按下时：蓝紫色，与 BottomNavigationBar 选中颜色一致
                 else 

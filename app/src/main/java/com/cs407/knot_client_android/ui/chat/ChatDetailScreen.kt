@@ -2,16 +2,22 @@ package com.cs407.knot_client_android.ui.chat
 
 import android.graphics.RenderEffect
 import android.graphics.Shader
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.with
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
@@ -20,13 +26,17 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -48,13 +58,16 @@ import androidx.navigation.NavHostController
 import com.cs407.knot_client_android.navigation.Screen
 import com.cs407.knot_client_android.data.repository.UserRepository
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.Image
+import androidx.compose.ui.input.pointer.pointerInput
 import coil.compose.rememberAsyncImagePainter
+import com.cs407.knot_client_android.ui.components.FloatingActionButton
 import java.time.Duration
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun ChatDetailScreen(
     navController: NavHostController,
@@ -164,6 +177,17 @@ fun ChatDetailScreen(
             DateTimeFormatter.ofPattern("HH:mm")
         }
 
+        var isAttachmentPanelOpen by remember { mutableStateOf(false) }
+        // 底部附件面板下滑跟随偏移（像素）
+        var sheetDragOffset by remember { mutableStateOf(0f) }
+
+        // 每次重新打开附件面板时，重置偏移，避免沿用上次关闭时的位置
+        LaunchedEffect(isAttachmentPanelOpen) {
+            if (isAttachmentPanelOpen) {
+                sheetDragOffset = 0f
+            }
+        }
+
         LaunchedEffect(state.messages.size) {
             if (state.messages.isNotEmpty()) {
                 listState.animateScrollToItem(state.messages.lastIndex)
@@ -213,87 +237,222 @@ fun ChatDetailScreen(
             }
         }
 
-        // 底部输入栏：单一大圆角容器，内部左侧 + 按钮 / 中间输入框 / 右侧发送按钮
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 42.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(28.dp),
-                color = Color.White,
-                border = BorderStroke(1.dp, Color(0xFFE5E7EB))
-            ) {
+        // 底部：输入栏 <-> 附件面板 动效切换（淡入淡出，避免拖拽关闭时闪烁）
+        AnimatedContent(
+            targetState = isAttachmentPanelOpen,
+            transitionSpec = {
+                fadeIn(animationSpec = tween(200)) with
+                    fadeOut(animationSpec = tween(150))
+            },
+            label = "bottomInputAttachmentPanel"
+        ) { expanded ->
+            if (!expanded) {
+                // 底部输入栏：单一大圆角容器，内部左侧 + 按钮 / 中间输入框 / 右侧发送按钮
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 6.dp, vertical = 3.dp),
+                        .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 42.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // 左侧 + 按钮（未来可扩展为图片/附件）
-                    IconButton(
-                        onClick = { /* TODO: attach file */ },
-                        colors = IconButtonDefaults.iconButtonColors(
-                            contentColor = Color(0xFF6B7280)
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Add,
-                            contentDescription = "Add attachment"
-                        )
-                    }
-
-                    // 竖线分隔
-                    Box(
-                        modifier = Modifier
-                            .padding(horizontal = 4.dp)
-                            .width(1.dp)
-                            .height(20.dp)
-                            .background(Color(0xFFE5E7EB))
-                    )
-
-                    // 文本输入区域（无边框，融入容器）
-                    TextField(
-                        value = state.draft,
-                        onValueChange = onDraftChange,
-                        placeholder = { Text("Say Something?") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(0.dp),
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = Color.Transparent,
-                            unfocusedContainerColor = Color.Transparent,
-                            disabledContainerColor = Color.Transparent,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent,
-                            disabledIndicatorColor = Color.Transparent,
-                            cursorColor = Color(0xFF4A6CF7)
-                        )
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    // 右侧：圆形发送按钮，嵌在同一容器内
                     Surface(
-                        shape = CircleShape,
-                        color = Color(0xFF4A6CF7),
-                        shadowElevation = 0.dp
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(28.dp),
+                        color = Color.White,
+                        border = BorderStroke(1.dp, Color(0xFFE5E7EB))
                     ) {
-                        IconButton(
-                            onClick = { onSendMessage(state.draft) },
-                            colors = IconButtonDefaults.iconButtonColors(
-                                contentColor = Color.White
-                            )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 6.dp, vertical = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Send,
-                                contentDescription = "Send",
-                                tint = Color(0xFFFFFFFF),
+                            // 左侧 + 按钮（展开附件面板）
+                            IconButton(
+                                onClick = { isAttachmentPanelOpen = true },
+                                colors = IconButtonDefaults.iconButtonColors(
+                                    contentColor = Color(0xFF6B7280)
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Add,
+                                    contentDescription = "Add attachment"
+                                )
+                            }
+
+                            // 竖线分隔
+                            Box(
                                 modifier = Modifier
-                                    .rotate(-40f)        // 再多一点倾斜
-                                    .offset(x = 2.dp, y = (-1).dp) // 向右上轻微偏移，视觉更平衡
+                                    .padding(horizontal = 4.dp)
+                                    .width(1.dp)
+                                    .height(20.dp)
+                                    .background(Color(0xFFE5E7EB))
+                            )
+
+                            // 文本输入区域（无边框，融入容器）
+                            TextField(
+                                value = state.draft,
+                                onValueChange = onDraftChange,
+                                placeholder = { Text("Say Something?") },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(0.dp),
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color.Transparent,
+                                    unfocusedContainerColor = Color.Transparent,
+                                    disabledContainerColor = Color.Transparent,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent,
+                                    disabledIndicatorColor = Color.Transparent,
+                                    cursorColor = Color(0xFF4A6CF7)
+                                )
+                            )
+
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            // 右侧：圆形发送按钮，嵌在同一容器内
+                            Surface(
+                                shape = CircleShape,
+                                color = Color(0xFF4A6CF7),
+                                shadowElevation = 0.dp
+                            ) {
+                                IconButton(
+                                    onClick = { onSendMessage(state.draft) },
+                                    colors = IconButtonDefaults.iconButtonColors(
+                                        contentColor = Color.White
+                                    )
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.Send,
+                                        contentDescription = "Send",
+                                        tint = Color(0xFFFFFFFF),
+                                        modifier = Modifier
+                                            .rotate(-40f)        // 再多一点倾斜
+                                            .offset(x = 2.dp, y = (-1).dp) // 向右上轻微偏移，视觉更平衡
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                // 展开的附件容器：高度为屏幕 40%，距离屏幕边缘 8dp
+                val configuration = LocalConfiguration.current
+                val screenHeight = configuration.screenHeightDp.dp
+                val panelHeight = screenHeight * 0.4f
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(panelHeight)
+                        .padding(8.dp)
+                        .graphicsLayer {
+                            translationY = sheetDragOffset
+                        }
+                ) {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        shape = RoundedCornerShape(48.dp),
+                        color = Color(0xFFF8F6F4),
+                        shadowElevation = 20.dp,
+                        border = BorderStroke(1.dp, Color(0xFFE5E7EB))
+                        )
+                        {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .pointerInput(isAttachmentPanelOpen) {
+                                    if (isAttachmentPanelOpen) {
+                                        detectVerticalDragGestures(
+                                            onDragEnd = {
+                                                // 向下拖动距离较大时收起面板，否则回弹
+                                                if (sheetDragOffset > 120f) {
+                                                    // 不立即重置 offset，保持在手指松开的视觉位置
+                                                    isAttachmentPanelOpen = false
+                                                } else {
+                                                    // 回弹到原位
+                                                    sheetDragOffset = 0f
+                                                }
+                                            },
+                                            onVerticalDrag = { change, dragAmount ->
+                                                change.consume()
+                                                // 只关心向下拖动，让面板跟随手指
+                                                if (dragAmount > 0f) {
+                                                    sheetDragOffset =
+                                                        (sheetDragOffset + dragAmount)
+                                                            .coerceAtLeast(0f)
+                                                } else if (dragAmount < 0f && sheetDragOffset > 0f) {
+                                                    // 轻微向上拖动时，允许减小偏移，避免卡在中间
+                                                    sheetDragOffset =
+                                                        (sheetDragOffset + dragAmount)
+                                                            .coerceAtLeast(0f)
+                                                }
+                                            }
+                                        )
+                                    }
+                                }
+                                .padding(24.dp) // inner padding 再大一些
+                        ) {
+                            // 附件 Grid，目前先只有一个：Photos（图片）
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(4),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(top = 15.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                item {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+
+                                            },
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(68.dp)
+                                                .clip(RoundedCornerShape(28.dp))
+                                                .background(
+                                                    brush = Brush.linearGradient(
+                                                        colors = listOf(
+                                                            Color(0xFF636EF1),
+                                                            Color(0xFF9B8FD9)
+                                                        )
+                                                    )
+                                                )
+                                                .border(
+                                                    width = 1.dp,
+                                                    color = Color(0xFFEEF2FF),
+                                                    shape = RoundedCornerShape(18.dp)
+                                                ),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Filled.Image,
+                                                contentDescription = "Photos",
+                                                tint = Color.White,
+                                                modifier = Modifier.size(50.dp)
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "Photos",
+                                            fontSize = 14.sp,
+                                            color = Color(0xFF4B5563)
+                                        )
+                                    }
+                                }
+                            }
+
+                            // 右上角关闭按钮，采用 FloatingActionButton 双层毛玻璃 + 弹性动效
+                            FloatingActionButton(
+                                icon = Icons.Filled.Close,
+                                onClick = { isAttachmentPanelOpen = false },
+                                modifier = Modifier.align(Alignment.TopEnd),
+                                containerSize = 52.dp,
+                                iconSize = 22.dp
                             )
                         }
                     }
