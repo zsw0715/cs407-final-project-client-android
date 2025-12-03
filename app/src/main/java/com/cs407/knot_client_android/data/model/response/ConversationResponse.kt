@@ -25,3 +25,14 @@ data class ConversationListResp(
     val data: List<ConversationDto>?,
     val error: String?
 )
+
+data class CreateGroupResp(
+    val success: Boolean,
+    val message: String?,
+    val data: GroupIdData?,
+    val error: String?
+)
+
+data class GroupIdData(
+    val id: Long
+)

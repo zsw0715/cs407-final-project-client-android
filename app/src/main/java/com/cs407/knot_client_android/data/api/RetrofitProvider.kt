@@ -108,4 +108,13 @@ object RetrofitProvider {
             .create(FriendApiService::class.java)
     }
 
+    fun createConversationService(baseUrl: String): ConversationApi {
+        return Retrofit.Builder()
+            .baseUrl(baseUrl)
+            .client(createLoggingClient())
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(ConversationApi::class.java)
+    }
+
 }

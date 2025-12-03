@@ -1,6 +1,7 @@
 package com.cs407.knot_client_android.data.api
 
 import com.cs407.knot_client_android.data.model.response.ApiResponse
+import com.cs407.knot_client_android.data.model.response.FriendListResp
 import com.cs407.knot_client_android.ui.friend.FriendRequestItem
 import com.cs407.knot_client_android.ui.friend.FriendUserSummary
 import retrofit2.http.GET
@@ -17,4 +18,10 @@ interface FriendApiService {
     suspend fun getFriends(
         @Header("Authorization") authorization: String
     ): ApiResponse<List<FriendUserSummary>>
+
+    @GET("/api/friends/list")
+    suspend fun getFriendList(
+        @Header("Authorization") authorization: String   // "Bearer <token>"
+    ): FriendListResp
+
 }
