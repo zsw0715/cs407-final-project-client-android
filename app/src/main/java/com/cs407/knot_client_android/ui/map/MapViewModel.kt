@@ -35,7 +35,7 @@ class MapViewModel : ViewModel() {
         if (repository != null) return
         repository = MapPostRepository(
             context = context,
-            baseUrl = "http://10.0.2.2:8080"
+            baseUrl = "http://3.144.236.205:8080"
         )
     }
 
@@ -114,6 +114,16 @@ class MapViewModel : ViewModel() {
             list[idx] = old.copy(commentCount = old.commentCount + 1)
 
             state.copy(posts = list)
+        }
+    }
+
+    /**
+     * 删除指定 mapPostId 的帖子（用于本地 UI 同步）
+     */
+    fun removePostById(mapPostId: Long) {
+        _uiState.update { state ->
+            val newList = state.posts.filterNot { it.mapPostId == mapPostId }
+            state.copy(posts = newList)
         }
     }
 

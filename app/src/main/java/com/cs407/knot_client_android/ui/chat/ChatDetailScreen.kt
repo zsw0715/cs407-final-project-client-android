@@ -194,7 +194,7 @@ fun ChatDetailScreen(
 
         // 照片选择 & 上传：从系统相册选图 -> 上传到 S3 -> 发送图片消息
         val imageUploadRepository = remember {
-            UserRepository(context.applicationContext, baseUrl = "http://10.0.2.2:8080")
+            UserRepository(context.applicationContext, baseUrl = "http://3.144.236.205:8080")
         }
         val photoPickerLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.GetContent()

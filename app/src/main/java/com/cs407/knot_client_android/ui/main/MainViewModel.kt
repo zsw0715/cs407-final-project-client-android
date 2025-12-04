@@ -25,8 +25,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val jwt = tokenStore.get()
             if (jwt != null) {
-                // 模拟器用 10.0.2.2；真机换成电脑局域网 IP
-                wsManager.connect("ws://10.0.2.2:10827/ws", jwt)
+                // Production server
+                wsManager.connect("ws://3.144.236.205:10827/ws", jwt)
             }
         }
     }

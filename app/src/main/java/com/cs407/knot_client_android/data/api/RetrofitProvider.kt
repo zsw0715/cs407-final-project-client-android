@@ -24,7 +24,7 @@ object RetrofitProvider {
 
     /**
      * 创建认证 API 服务
-     * @param baseUrl 后端地址，模拟器使用 http://10.0.2.2:8080
+     * @param baseUrl 后端地址，生产环境使用 http://3.144.236.205:8080
      */
     fun createAuthService(baseUrl: String): AuthApiService {
         return Retrofit.Builder()
@@ -37,7 +37,7 @@ object RetrofitProvider {
 
     /**
      * 创建用户 API 服务
-     * @param baseUrl 后端地址，模拟器使用 http://10.0.2.2:8080
+     * @param baseUrl 后端地址，生产环境使用 http://3.144.236.205:8080
      */
     fun createUserService(baseUrl: String): UserApiService {
         return Retrofit.Builder()
@@ -50,7 +50,7 @@ object RetrofitProvider {
 
     /**
      * 创建地图帖子 API 服务
-     * @param baseUrl 后端地址，模拟器使用 http://10.0.2.2:8080
+     * @param baseUrl 后端地址，生产环境使用 http://3.144.236.205:8080
      */
     fun createMapPostService(baseUrl: String): MapPostApiService {
         return Retrofit.Builder()
@@ -63,7 +63,7 @@ object RetrofitProvider {
 
     /**
      * 创建 S3 预签名上传 API 服务
-     * @param baseUrl 后端地址，模拟器使用 http://10.0.2.2:8080
+     * @param baseUrl 后端地址，生产环境使用 http://3.144.236.205:8080
      */
     fun createS3Service(baseUrl: String): S3ApiService {
         return Retrofit.Builder()

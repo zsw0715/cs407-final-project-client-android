@@ -10,6 +10,7 @@ import com.cs407.knot_client_android.data.model.response.MapPostNearby
 import com.cs407.knot_client_android.data.model.response.NearbyMapPostsResponse
 import com.google.android.gms.common.api.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
@@ -57,5 +58,14 @@ interface MapPostApiService {
         @Query("page") page: Int = 1,
         @Query("size") size: Int = 20
     ): ApiResponse<ConversationMessagesResponse>
+
+    /**
+     * 删除地图帖子（只能删除自己的）
+     */
+    @DELETE("/api/mapPost/{mapPostId}")
+    suspend fun deleteMapPost(
+        @Header("Authorization") token: String,
+        @Path("mapPostId") mapPostId: Long
+    ): ApiResponse<Unit>
 }
 
