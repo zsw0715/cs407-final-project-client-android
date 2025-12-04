@@ -9,6 +9,8 @@ import com.cs407.knot_client_android.data.repository.UserRepository
 import com.cs407.knot_client_android.ui.main.MainViewModel
 import com.cs407.knot_client_android.utils.SimpleWebSocketManager
 import com.google.gson.Gson
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,6 +37,8 @@ class FriendViewModel(application: Application) : AndroidViewModel(application) 
     private val _uiState = MutableStateFlow(FriendUiState())
     val uiState: StateFlow<FriendUiState> = _uiState.asStateFlow()
 
+    private var incomingJob: Job? = null
+
     init {
         loadFriends()
         loadIncomingRequests()
@@ -42,6 +46,14 @@ class FriendViewModel(application: Application) : AndroidViewModel(application) 
 
     fun attachMainViewModel(mainVm: MainViewModel) {
         this.wsManager = mainVm.wsManager
+
+        if (incomingJob == null) {
+            incomingJob = viewModelScope.launch {
+                mainVm.incoming.collect { json ->
+                    handleIncomingMessage(json)
+                }
+            }
+        }
     }
 
     /** 按用户名搜索用户 */
@@ -161,6 +173,66 @@ class FriendViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    /** 监听到后端的好友相关推送时刷新本地 UI 状态 */
+    private fun handleIncomingMessage(json: String) {
+        val type = try {
+            gson.fromJson(json, WsTypeOnly::class.java).type
+        } catch (_: Exception) {
+            null
+        } ?: return
+
+        when (type) {
+            "FRIEND_REQUEST_NEW" -> {
+                val evt = try {
+                    gson.fromJson(json, FriendRequestNewEvent::class.java)
+                } catch (_: Exception) {
+                    null
+                }
+                if (evt != null) {
+                    addIncomingRequest(evt)
+                } else {
+                    loadIncomingRequests()
+                }
+            }
+
+            "FRIEND_REQUEST_ACK" -> {
+                val ack = try {
+                    gson.fromJson(json, FriendRequestAckEvent::class.java)
+                } catch (_: Exception) {
+                    null
+                }
+                if (ack?.status?.equals("accepted", ignoreCase = true) == true) {
+                    loadFriends() // 把新好友拉取进列表
+                }
+            }
+
+            "FRIEND_ADDED" -> {
+                // 请求方收到的推送，直接刷新好友列表
+                loadFriends()
+            }
+        }
+    }
+
+    private fun addIncomingRequest(evt: FriendRequestNewEvent) {
+        val reqId = evt.requestId ?: return
+        val requesterId = evt.fromUser?.userId ?: return
+        val item = FriendRequestItem(
+            requestId = reqId,
+            requesterId = requesterId,
+            message = evt.message ?: "",
+            timestamp = evt.timestamp,
+            requesterName = evt.fromUser.username
+        )
+
+        _uiState.update { state ->
+            if (state.incomingRequests.any { it.requestId == reqId }) {
+                state
+            } else {
+                state.copy(incomingRequests = state.incomingRequests + item)
+            }
+        }
+    }
+
     /** 统一序列化并通过 MainViewModel 的 WebSocket 发送 */
     private fun sendWebSocketJson(payload: Any) {
         val json = gson.toJson(payload)
@@ -185,4 +257,29 @@ data class FriendRequestSendPayload(
 data class FriendRequestActionPayload(
     val type: String,
     val requestId: Long
+)
+
+/** 仅用于解析 WebSocket 消息类型 */
+private data class WsTypeOnly(val type: String?)
+
+private data class FriendRequestNewEvent(
+    val type: String,
+    val requestId: Long?,
+    val fromUser: WsUserInfo?,
+    val message: String?,
+    val timestamp: Long?
+)
+
+private data class FriendRequestAckEvent(
+    val type: String,
+    val requestId: Long?,
+    val status: String?,
+    val convId: Long?,
+    val timestamp: Long?
+)
+
+private data class WsUserInfo(
+    val userId: Long?,
+    val username: String?,
+    val avatarUrl: String?
 )
