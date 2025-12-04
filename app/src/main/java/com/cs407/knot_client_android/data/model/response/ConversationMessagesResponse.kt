@@ -30,6 +30,8 @@ data class ConversationMessage(
     @SerializedName("msgStatus") val msgStatus: Int,
     @SerializedName("createdAt") val createdAt: String,
     @SerializedName("editedAt") val editedAt: String?,
-    @SerializedName("deletedAt") val deletedAt: String?
+    @SerializedName("deletedAt") val deletedAt: String?,
+    @SerializedName("senderNickname") val senderNickname: String? = null,
+    @SerializedName("senderAvatarUrl") val senderAvatarUrl: String? = null
 )
 

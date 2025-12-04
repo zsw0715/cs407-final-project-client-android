@@ -9,7 +9,9 @@ data class MessageDto(
     val clientMsgId: String,
     val contentText: String,
     val createdAt: String,
-    val mediaUrl: String? = null   // 图片等富媒体 URL，可为空
+    val mediaUrl: String? = null,   // 图片等富媒体 URL，可为空
+    val senderNickname: String? = null,
+    val senderAvatarUrl: String? = null
 )
 
 // 分页数据
