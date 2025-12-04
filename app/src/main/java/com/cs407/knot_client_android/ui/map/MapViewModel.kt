@@ -35,7 +35,7 @@ class MapViewModel : ViewModel() {
         if (repository != null) return
         repository = MapPostRepository(
             context = context,
-            baseUrl = "http://10.0.2.2:8080"
+            baseUrl = "http://3.144.236.205:8080"
         )
     }
 

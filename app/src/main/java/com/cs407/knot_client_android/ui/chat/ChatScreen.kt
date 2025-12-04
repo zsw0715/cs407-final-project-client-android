@@ -80,8 +80,8 @@ fun ChatScreen(
     val appContext = context.applicationContext
     val tokenStore = remember { TokenStore(appContext) }
 
-    // TODO：把 baseUrl 换成你们统一用的后端地址（跟登录、地图等一致）
-    val baseUrl = "http://10.0.2.2:8080"
+    // Production server address
+    val baseUrl = "http://3.144.236.205:8080"
     val friendApi = remember { RetrofitProvider.createFriendService(baseUrl) }
     val conversationApi = remember { RetrofitProvider.createConversationService(baseUrl) }
 

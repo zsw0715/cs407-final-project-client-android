@@ -19,7 +19,7 @@ import kotlinx.coroutines.launch
 
 class FriendViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val baseUrl = "http://10.0.2.2:8080"
+    private val baseUrl = "http://3.144.236.205:8080"
     private var wsManager: SimpleWebSocketManager? = null
 
     private val userRepository = UserRepository(

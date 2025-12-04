@@ -18,7 +18,7 @@ fun ChatDetailRoute(
     title: String,
     myUid: Long,
     mainVm: MainViewModel,
-    baseUrl: String = "http://10.0.2.2:8080/"
+    baseUrl: String = "http://3.144.236.205:8080/"
 ) {
     val appContext = LocalContext.current
 
