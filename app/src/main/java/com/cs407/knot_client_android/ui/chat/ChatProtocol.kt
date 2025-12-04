@@ -2,13 +2,14 @@ package com.cs407.knot_client_android.ui.chat
 
 import com.google.gson.Gson
 
-// 发送用
+// 发送用（支持文本 & 图片等富媒体）
 data class MsgSend(
     val type: String = "MSG_SEND",
     val convId: Long,
     val clientMsgId: String,
-    val msgType: Int,
-    val contentText: String
+    val msgType: Int,              // 0 = TEXT, 1 = IMAGE ...
+    val contentText: String? = null,
+    val mediaUrl: String? = null
 )
 
 // ACK
@@ -25,7 +26,9 @@ data class MsgNew(
     val convId: Long,
     val fromUid: Long,
     val msgId: Long,
-    val contentText: String
+    val msgType: Int,
+    val contentText: String,
+    val mediaUrl: String? = null
 )
 
 // 只为了读 "type"

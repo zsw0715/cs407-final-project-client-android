@@ -60,7 +60,9 @@ fun ChatDetailRoute(
                         vm.onMsgNew(
                             fromUid = m.fromUid,
                             msgId = m.msgId,
-                            content = m.contentText
+                            msgType = m.msgType,
+                            content = m.contentText,
+                            mediaUrl = m.mediaUrl
                         )
                     }
                 }
@@ -80,6 +82,7 @@ fun ChatDetailRoute(
         navController = navController,
         state = state,
         onDraftChange = { text -> vm.updateDraft(text) },
-        onSendMessage = { text -> vm.sendMessage(text) }
+        onSendMessage = { text -> vm.sendMessage(text) },
+        onSendImage = { url -> vm.sendImageMessage(url) }
     )
 }

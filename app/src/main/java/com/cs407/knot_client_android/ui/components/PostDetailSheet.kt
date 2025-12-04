@@ -12,6 +12,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,13 +44,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.content.Context
 import androidx.compose.material.icons.outlined.Face
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import com.cs407.knot_client_android.R
 import com.cs407.knot_client_android.data.api.RetrofitProvider
 import com.cs407.knot_client_android.data.local.TokenStore
@@ -60,6 +61,7 @@ import com.cs407.knot_client_android.data.model.WebSocketMessage
 import com.cs407.knot_client_android.data.model.MessageNewMessage
 import com.cs407.knot_client_android.ui.main.MainViewModel
 import com.google.gson.Gson
+import coil.compose.rememberAsyncImagePainter
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -905,6 +907,40 @@ fun PostContentSection(
         )
         
         Spacer(Modifier.height(16.dp))
+        
+        // 图片横向 Carousel（折叠 / 展开都显示）
+        if (!postDetail.mediaUrls.isNullOrEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(220.dp)
+            ) {
+                LazyRow(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(postDetail.mediaUrls) { url ->
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .width(260.dp)
+                                .clip(RoundedCornerShape(24.dp))
+                                .background(Color(0xFFE5E7EB)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Image(
+                                painter = rememberAsyncImagePainter(model = url),
+                                contentDescription = "Post photo",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                    }
+                }
+            }
+            
+            Spacer(Modifier.height(20.dp))
+        }
         
         // 位置信息
         Row(
