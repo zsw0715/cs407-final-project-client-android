@@ -2,6 +2,7 @@ package com.cs407.knot_client_android.ui.components
 
 import android.graphics.RenderEffect
 import android.graphics.Shader
+import android.widget.Toast
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -21,10 +22,18 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Create
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Share
 //import androidx.compose.material.icons.outlined.ChatBubbleOutline
 //import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -47,18 +56,23 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import android.content.Context
 import androidx.compose.material.icons.outlined.Face
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.cs407.knot_client_android.R
 import com.cs407.knot_client_android.data.api.RetrofitProvider
 import com.cs407.knot_client_android.data.local.TokenStore
+import com.cs407.knot_client_android.data.model.SharedPostPayload
 import com.cs407.knot_client_android.data.model.response.ConversationMessage
 import com.cs407.knot_client_android.data.model.response.MapPostDetailResponse
 import com.cs407.knot_client_android.data.model.response.MapPostNearby
 import com.cs407.knot_client_android.data.model.WebSocketMessage
 import com.cs407.knot_client_android.data.model.MessageNewMessage
+import com.cs407.knot_client_android.ui.chat.MsgSend
+import com.cs407.knot_client_android.ui.chat.MsgSendLoc
+import com.cs407.knot_client_android.ui.chat.toJson
 import com.cs407.knot_client_android.ui.main.MainViewModel
 import com.google.gson.Gson
 import coil.compose.rememberAsyncImagePainter
@@ -75,6 +89,22 @@ data class Comment(
     val likeCount: Int
 )
 
+enum class ShareTargetType {
+    GROUP, CONTACT
+}
+
+data class ShareTargetUi(
+    val id: Long,
+    val name: String,
+    val subtitle: String? = null,
+    val avatarUrl: String? = null,
+    val type: ShareTargetType
+)
+
+enum class ShareTargetFilter {
+    ALL, GROUPS, CONTACTS
+}
+
 @Composable
 fun PostDetailSheet(
     post: MapPostNearby?,
@@ -84,6 +114,13 @@ fun PostDetailSheet(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val tokenStore = remember(context) { TokenStore(context) }
+    val baseUrl = remember { "http://10.0.2.2:8080" }
+    val mapPostApi = remember { RetrofitProvider.createMapPostService(baseUrl) }
+    val friendApi = remember { RetrofitProvider.createFriendService(baseUrl) }
+    val conversationApi = remember { RetrofitProvider.createConversationService(baseUrl) }
+    val shareLoaderScope = rememberCoroutineScope()
+    val gson = remember { Gson() }
     
     // 状态管理
     var postDetail by remember { mutableStateOf<MapPostDetailResponse?>(null) }
@@ -98,6 +135,152 @@ fun PostDetailSheet(
     var totalPages by remember { mutableStateOf(1) }
     var isLoadingMoreComments by remember { mutableStateOf(false) }
     val hasMorePages by remember { derivedStateOf { currentPage < totalPages } }
+
+    var isShareDialogVisible by remember { mutableStateOf(false) }
+    var shareTargets by remember { mutableStateOf<List<ShareTargetUi>>(emptyList()) }
+    var shareTargetsLoading by remember { mutableStateOf(false) }
+    var shareTargetsError by remember { mutableStateOf<String?>(null) }
+
+    suspend fun loadShareTargets() {
+        if (shareTargetsLoading) return
+        shareTargetsLoading = true
+        shareTargetsError = null
+        try {
+            val token = tokenStore.getAccessToken()
+            if (token.isNullOrBlank()) {
+                shareTargets = emptyList()
+                shareTargetsError = "请先登录后再分享"
+                shareTargetsLoading = false
+                return
+            }
+            val authHeader = "Bearer $token"
+
+            val friendResult = kotlin.runCatching { friendApi.getFriendList(authHeader) }
+            val conversationResult = kotlin.runCatching { conversationApi.getConversationList(authHeader) }
+
+            val aggregated = mutableListOf<ShareTargetUi>()
+
+            friendResult.getOrNull()
+                ?.takeIf { it.success && !it.data.isNullOrEmpty() }
+                ?.let { resp ->
+                    aggregated += resp.data.orEmpty().map { dto ->
+                        ShareTargetUi(
+                            id = dto.convId,
+                            name = dto.username,
+                            subtitle = "Friend",
+                            avatarUrl = dto.avatar,
+                            type = ShareTargetType.CONTACT
+                        )
+                    }
+                }
+
+            conversationResult.getOrNull()
+                ?.takeIf { it.success && !it.data.isNullOrEmpty() }
+                ?.let { resp ->
+                    aggregated += resp.data.orEmpty()
+                        .filter { it.convType != 1 }
+                        .map { dto ->
+                            val subtitle = dto.memberCount?.let { count ->
+                                "Group · $count members"
+                            } ?: "Group chat"
+                            ShareTargetUi(
+                                id = dto.convId,
+                                name = dto.title?.takeIf { it.isNotBlank() }
+                                    ?: dto.otherUserName
+                                    ?: "Group ${dto.convId}",
+                                subtitle = subtitle,
+                                avatarUrl = dto.groupAvatar,
+                                type = ShareTargetType.GROUP
+                            )
+                        }
+                }
+
+            shareTargets = aggregated.distinctBy { it.type to it.id }
+
+            if (shareTargets.isEmpty()) {
+                val friendMsg = friendResult.exceptionOrNull()?.message
+                    ?: friendResult.getOrNull()?.message
+                    ?: friendResult.getOrNull()?.error
+                val conversationMsg = conversationResult.exceptionOrNull()?.message
+                    ?: conversationResult.getOrNull()?.message
+                    ?: conversationResult.getOrNull()?.error
+                shareTargetsError = friendMsg ?: conversationMsg
+            } else {
+                shareTargetsError = null
+            }
+        } catch (e: Exception) {
+            shareTargets = emptyList()
+            shareTargetsError = e.message ?: "加载分享列表失败"
+        } finally {
+            shareTargetsLoading = false
+        }
+    }
+
+    LaunchedEffect(isVisible) {
+        if (isVisible) {
+            loadShareTargets()
+        }
+    }
+
+    fun sharePostToChat(target: ShareTargetUi) {
+        val detail = postDetail
+        if (detail == null) {
+            Toast.makeText(context, "帖子数据尚未加载完成", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val clientMsgId = "share-${System.currentTimeMillis()}"
+        val cover = detail.mediaUrls?.firstOrNull()
+        val payload = SharedPostPayload(
+            mapPostId = detail.mapPostId,
+            convId = detail.convId,
+            creatorId = detail.creatorId,
+            title = detail.title,
+            description = detail.description,
+            coverUrl = cover,
+            creatorUsername = detail.creatorUsername,
+            locName = detail.locName,
+            locLat = detail.locLat,
+            locLng = detail.locLng
+        )
+        val payloadJson = gson.toJson(payload)
+        val contentText = "分享了帖子：${detail.title}"
+
+        val message = MsgSend(
+            convId = target.id,
+            clientMsgId = clientMsgId,
+            msgType = 6,
+            contentText = contentText,
+            mediaUrl = cover,
+            mediaThumbUrl = cover,
+            mediaMetaJson = payloadJson,
+            loc = MsgSendLoc(
+                lat = detail.locLat,
+                lng = detail.locLng,
+                name = detail.locName,
+                accuracy = null
+            )
+        )
+
+        try {
+            mainViewModel.send(message.toJson())
+            Toast
+                .makeText(
+                    context,
+                    "Shared to ${target.name}",
+                    Toast.LENGTH_SHORT
+                )
+                .show()
+        } catch (e: Exception) {
+            Toast
+                .makeText(
+                    context,
+                    "分享失败：${e.message ?: "未知错误"}",
+                    Toast.LENGTH_SHORT
+                )
+                .show()
+        }
+    }
     
     // 加载帖子详情和评论
     LaunchedEffect(post?.mapPostId, isVisible) {
@@ -106,9 +289,8 @@ fun PostDetailSheet(
             isLoadingDetail = true
             errorMessage = null
             try {
-                val tokenStore = TokenStore(context)
                 val token = tokenStore.getAccessToken()
-                val apiService = RetrofitProvider.createMapPostService("http://10.0.2.2:8080")
+                val apiService = mapPostApi
                 
                 val response = apiService.getMapPostDetail("Bearer $token", post.mapPostId)
                 if (response.success && response.data != null) {
@@ -203,9 +385,8 @@ fun PostDetailSheet(
             if (!isLoadingMoreComments && hasMorePages) {
                 isLoadingMoreComments = true
                 try {
-                    val tokenStore = TokenStore(context)
                     val token = tokenStore.getAccessToken()
-                    val apiService = RetrofitProvider.createMapPostService("http://10.0.2.2:8080")
+                    val apiService = mapPostApi
                     
                     val commentsResponse = apiService.getConversationMessages(
                         token = "Bearer $token",
@@ -255,8 +436,27 @@ fun PostDetailSheet(
         onDismiss = onDismiss,
         mainViewModel = mainViewModel,
         onLoadMoreComments = loadMoreComments,
+        onShareClick = { isShareDialogVisible = true },
         modifier = modifier
     )
+
+    if (isShareDialogVisible) {
+        PostShareDialog(
+            targets = shareTargets,
+            isLoading = shareTargetsLoading,
+            errorMessage = shareTargetsError,
+            onDismiss = { isShareDialogVisible = false },
+            onRetry = {
+                shareLoaderScope.launch {
+                    loadShareTargets()
+                }
+            },
+            onConfirm = { target ->
+                isShareDialogVisible = false
+                sharePostToChat(target)
+            }
+        )
+    }
 }
 
 // 格式化时间戳
@@ -299,11 +499,13 @@ private fun PostDetailSheetContent(
     onDismiss: () -> Unit,
     mainViewModel: MainViewModel,
     onLoadMoreComments: suspend () -> Unit,
+    onShareClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp.dp
     val density = LocalDensity.current
+    val context = LocalContext.current
     
     // 测量内容高度
     var contentHeightPx by remember { mutableStateOf(0) }
@@ -549,6 +751,7 @@ private fun PostDetailSheetContent(
                                     post = post,
                                     localCommentCount = localCommentCount,
                                     onCommentClick = { onCommentClick() },
+                                    onShareClick = onShareClick,
                                     onDrag = { dragAmount ->
                                         // 实时跟随手指
                                         val newHeight = (animatedHeight.value - dragAmount).coerceIn(
@@ -834,6 +1037,7 @@ fun PostContentSection(
     post: MapPostNearby?,
     localCommentCount: Int, // 本地评论数（实时更新）
     onCommentClick: () -> Unit = {},
+    onShareClick: () -> Unit = {},
     onDrag: (Float) -> Unit = {},
     onDragStart: () -> Unit = {},
     onDragEnd: () -> Unit = {},
@@ -983,6 +1187,12 @@ fun PostContentSection(
                 label = "Comnt",
                 onClick = onCommentClick
             )
+            StatItem(
+                icon = Icons.Outlined.Share,
+                count = null,
+                label = "Share",
+                onClick = onShareClick
+            )
         }
     }
 }
@@ -990,7 +1200,7 @@ fun PostContentSection(
 @Composable
 fun StatItem(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
-    count: Int,
+    count: Int? = null,
     label: String,
     onClick: (() -> Unit)? = null
 ) {
@@ -1015,12 +1225,15 @@ fun StatItem(
             modifier = Modifier.size(24.dp)
         )
         Spacer(Modifier.height(4.dp))
-        Text(
-            text = count.toString(),
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF1C1B1F)
-        )
+        if (count != null) {
+            Text(
+                text = count.toString(),
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF1C1B1F)
+            )
+            Spacer(Modifier.height(2.dp))
+        }
         Text(
             text = label,
             fontSize = 12.sp,
@@ -1101,3 +1314,346 @@ fun CommentItem(comment: Comment) {
     }
 }
 
+@Composable
+fun PostShareDialog(
+    targets: List<ShareTargetUi>,
+    isLoading: Boolean,
+    errorMessage: String?,
+    onDismiss: () -> Unit,
+    onRetry: (() -> Unit)? = null,
+    onConfirm: (ShareTargetUi) -> Unit
+) {
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedFilter by remember { mutableStateOf(ShareTargetFilter.ALL) }
+    var selectedTargetId by remember { mutableStateOf<Long?>(null) }
+
+    val locale = Locale.getDefault()
+    val filteredTargets = remember(targets, searchQuery, selectedFilter) {
+        val keyword = searchQuery.trim().lowercase(locale)
+        targets.filter { target ->
+            val matchesFilter = when (selectedFilter) {
+                ShareTargetFilter.ALL -> true
+                ShareTargetFilter.GROUPS -> target.type == ShareTargetType.GROUP
+                ShareTargetFilter.CONTACTS -> target.type == ShareTargetType.CONTACT
+            }
+            val matchesQuery = if (keyword.isEmpty()) {
+                true
+            } else {
+                target.name.lowercase(locale).contains(keyword) ||
+                    (target.subtitle?.lowercase(locale)?.contains(keyword) ?: false)
+            }
+            matchesFilter && matchesQuery
+        }
+    }
+
+    LaunchedEffect(targets) {
+        selectedTargetId?.let { currentId ->
+            if (targets.none { it.id == currentId }) {
+                selectedTargetId = null
+            }
+        }
+    }
+
+    val selectedTarget = targets.firstOrNull { it.id == selectedTargetId }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.95f)
+                .fillMaxHeight(0.85f),
+            shape = RoundedCornerShape(48.dp),
+            color = Color(0xFFF8F6F4)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Share to chat",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF1C1B1F)
+                    )
+                    FloatingActionButton(
+                        icon = Icons.Default.Close,
+                        onClick = onDismiss,
+                        containerSize = 42.dp,
+                        iconSize = 20.dp
+                    )
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    singleLine = true,
+                    placeholder = { Text("Search groups or friends") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Outlined.Search,
+                            contentDescription = null,
+                            tint = Color(0xFF9B9B9B)
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF636EF1),
+                        unfocusedBorderColor = Color(0xFFE5E7EB),
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White
+                    )
+                )
+
+                Spacer(Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    ShareFilterChip(
+                        label = "All",
+                        selected = selectedFilter == ShareTargetFilter.ALL,
+                        onClick = { selectedFilter = ShareTargetFilter.ALL }
+                    )
+                    ShareFilterChip(
+                        label = "Groups",
+                        selected = selectedFilter == ShareTargetFilter.GROUPS,
+                        onClick = { selectedFilter = ShareTargetFilter.GROUPS }
+                    )
+                    ShareFilterChip(
+                        label = "Contacts",
+                        selected = selectedFilter == ShareTargetFilter.CONTACTS,
+                        onClick = { selectedFilter = ShareTargetFilter.CONTACTS }
+                    )
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                ) {
+                    when {
+                        isLoading -> {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                androidx.compose.material3.CircularProgressIndicator(
+                                    color = Color(0xFF636EF1)
+                                )
+                            }
+                        }
+                        errorMessage != null -> {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 32.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = errorMessage,
+                                    fontSize = 16.sp,
+                                    color = Color(0xFF9B9B9B)
+                                )
+                                if (onRetry != null) {
+                                    Spacer(Modifier.height(12.dp))
+                                    Button(
+                                        onClick = onRetry,
+                                        shape = RoundedCornerShape(20.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Color(0xFF636EF1)
+                                        )
+                                    ) {
+                                        Text("Retry", color = Color.White)
+                                    }
+                                }
+                            }
+                        }
+                        filteredTargets.isEmpty() -> {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 48.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "No chats found",
+                                    fontSize = 16.sp,
+                                    color = Color(0xFF9B9B9B)
+                                )
+                                Text(
+                                    text = "Try another keyword",
+                                    fontSize = 13.sp,
+                                    color = Color(0xFFCBD5F5)
+                                )
+                            }
+                        }
+                        else -> {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(filteredTargets) { target ->
+                                    ShareTargetRow(
+                                        target = target,
+                                        selected = target.id == selectedTargetId,
+                                        onSelect = { selectedTargetId = target.id }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                Button(
+                    onClick = {
+                        selectedTarget?.let { onConfirm(it) }
+                    },
+                    enabled = selectedTarget != null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF636EF1),
+                        disabledContainerColor = Color(0xFF9B9B9B).copy(alpha = 0.3f)
+                    )
+                ) {
+                    Text(
+                        text = if (selectedTarget != null) {
+                            "Share with ${selectedTarget.name}"
+                        } else {
+                            "Choose a chat"
+                        },
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ShareFilterChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val background = if (selected) Color(0xFF636EF1) else Color.White.copy(alpha = 0.9f)
+    val contentColor = if (selected) Color.White else Color(0xFF4B5563)
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(24.dp))
+            .background(background)
+            .border(
+                width = 1.dp,
+                color = if (selected) Color(0xFF636EF1) else Color(0xFFE5E7EB),
+                shape = RoundedCornerShape(24.dp)
+            )
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            )
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        Text(
+            text = label,
+            color = contentColor,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+private fun ShareTargetRow(
+    target: ShareTargetUi,
+    selected: Boolean,
+    onSelect: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(Color.White.copy(alpha = 0.95f))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onSelect
+            )
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (!target.avatarUrl.isNullOrBlank()) {
+            Image(
+                painter = rememberAsyncImagePainter(model = target.avatarUrl),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+            )
+        } else {
+            val initial = target.name.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFE5E7EB)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = initial,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF6B7280)
+                )
+            }
+        }
+
+        Spacer(Modifier.width(12.dp))
+
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = target.name,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF1C1B1F),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = target.subtitle ?: if (target.type == ShareTargetType.GROUP) {
+                    "Group chat"
+                } else {
+                    "Contact"
+                },
+                fontSize = 13.sp,
+                color = Color(0xFF9B9B9B)
+            )
+        }
+
+        RadioButton(
+            selected = selected,
+            onClick = onSelect
+        )
+    }
+}

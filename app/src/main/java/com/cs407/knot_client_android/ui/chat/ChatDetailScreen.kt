@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.rememberCoroutineScope
@@ -59,13 +60,16 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import coil.compose.rememberAsyncImagePainter
+import com.cs407.knot_client_android.data.model.SharedPostPayload
 import com.cs407.knot_client_android.data.repository.UserRepository
 import com.cs407.knot_client_android.navigation.Screen
 import com.cs407.knot_client_android.ui.components.FloatingActionButton
+import com.google.gson.Gson
 import java.time.Duration
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -79,7 +83,8 @@ fun ChatDetailScreen(
     onDraftChange: (String) -> Unit,
     onSendMessage: (String) -> Unit,
     onSendImage: (String) -> Unit = {},
-    onEditClick: () -> Unit = {}
+    onEditClick: () -> Unit = {},
+    onSharedPostClick: (SharedPostPayload) -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -260,7 +265,8 @@ fun ChatDetailScreen(
                             selfName = selfName,
                             otherName = otherName,
                             selfAvatarUrl = selfAvatarUrl,
-                            otherAvatarUrl = otherAvatarUrl
+                            otherAvatarUrl = otherAvatarUrl,
+                            onSharedPostClick = onSharedPostClick
                         )
                     }
                 }
@@ -501,8 +507,16 @@ private fun MessageBubble(
     selfName: String,
     otherName: String,
     selfAvatarUrl: String?,
-    otherAvatarUrl: String?
+    otherAvatarUrl: String?,
+    onSharedPostClick: (SharedPostPayload) -> Unit
 ) {
+    val gson = remember { Gson() }
+    val sharePayload = remember(msg.mediaMetaJson) {
+        msg.mediaMetaJson?.let {
+            runCatching { gson.fromJson(it, SharedPostPayload::class.java) }.getOrNull()
+        }
+    }
+
     val displayName = msg.senderNickname
         ?: if (msg.isMine) selfName else otherName
 
@@ -548,6 +562,13 @@ private fun MessageBubble(
                         contentScale = ContentScale.Crop
                     )
                 }
+            } else if (msg.msgType == 6 && sharePayload != null) {
+                SharedPostMessageCard(
+                    payload = sharePayload,
+                    coverUrl = msg.mediaUrl ?: sharePayload.coverUrl,
+                    isMine = msg.isMine,
+                    onClick = { onSharedPostClick(sharePayload) }
+                )
             } else {
                 // 文本消息气泡
                 Box(
@@ -572,6 +593,93 @@ private fun MessageBubble(
         if (msg.isMine) {
             Spacer(modifier = Modifier.width(10.dp))
             MessageAvatar(displayName, avatarUrl)
+        }
+    }
+}
+
+@Composable
+private fun SharedPostMessageCard(
+    payload: SharedPostPayload,
+    coverUrl: String?,
+    isMine: Boolean,
+    onClick: (() -> Unit)? = null
+) {
+    val shape = RoundedCornerShape(22.dp)
+    val background = if (isMine) Color(0xFFEEF2FF) else Color.White
+    var modifier = Modifier
+        .widthIn(max = 280.dp)
+        .clip(shape)
+        .border(
+            width = 1.dp,
+            color = Color(0xFFDDE1F9),
+            shape = shape
+        )
+        .background(background)
+    if (onClick != null) {
+        modifier = modifier.clickable { onClick() }
+    }
+    Column(
+        modifier = modifier
+    ) {
+        if (!coverUrl.isNullOrBlank()) {
+            val topShape = RoundedCornerShape(
+                topStart = 22.dp,
+                topEnd = 22.dp,
+                bottomStart = 0.dp,
+                bottomEnd = 0.dp
+            )
+            Image(
+                painter = rememberAsyncImagePainter(model = coverUrl),
+                contentDescription = "Shared post cover",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 140.dp)
+                    .clip(topShape),
+                contentScale = ContentScale.Crop
+            )
+        }
+
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = payload.title,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF1C1B1F)
+            )
+            payload.description?.takeIf { it.isNotBlank() }?.let { desc ->
+                Text(
+                    text = desc,
+                    fontSize = 14.sp,
+                    color = Color(0xFF4B5563),
+                    lineHeight = 20.sp,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Place,
+                    contentDescription = "Location",
+                    tint = Color(0xFF636EF1),
+                    modifier = Modifier.size(18.dp)
+                )
+                Text(
+                    text = payload.locName ?: "Unknown location",
+                    fontSize = 13.sp,
+                    color = Color(0xFF636E72)
+                )
+            }
+            Text(
+                text = "Shared by ${payload.creatorUsername}",
+                fontSize = 12.sp,
+                color = Color(0xFF9CA3AF)
+            )
         }
     }
 }

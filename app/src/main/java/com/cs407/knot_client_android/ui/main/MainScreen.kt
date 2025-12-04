@@ -22,6 +22,8 @@ import com.cs407.knot_client_android.ui.components.ExpandableBottomSheet
 import com.cs407.knot_client_android.ui.components.FloatingActionButton
 import com.cs407.knot_client_android.ui.components.NavTab
 import com.cs407.knot_client_android.ui.components.PostDetailSheet
+import com.cs407.knot_client_android.data.model.SharedPostNavigation
+import com.cs407.knot_client_android.data.model.SharedPostPayload
 import com.cs407.knot_client_android.data.model.response.MapPostNearby
 import com.cs407.knot_client_android.ui.map.MapScreen
 import com.cs407.knot_client_android.ui.profile.ProfileScreen
@@ -75,6 +77,18 @@ fun MainScreen(
     // PostDetailSheet 状态
     var selectedPost by remember { mutableStateOf<MapPostNearby?>(null) }
     var isPostDetailVisible by remember { mutableStateOf(false) }
+    var pendingSharedPost by remember { mutableStateOf<SharedPostNavigation?>(null) }
+
+    LaunchedEffect(mainVm) {
+        mainVm.sharedPostRequest.collect { request ->
+            request?.let { navigation ->
+                selectedTab = NavTab.MAP
+                pendingSharedPost = navigation
+                selectedPost = navigation.payload.toMapPostNearby()
+                isPostDetailVisible = true
+            }
+        }
+    }
 
     // 根据展开进度计算 padding：
     // 收起时 30dp，半展开时 8dp，全展开时 0dp
@@ -120,6 +134,11 @@ fun MainScreen(
                 mapViewModel = mapViewModel,
                 onUserLocationChanged = { point ->
                     currentUserLocation = point      // ★ 保存到 MainScreen 的 state
+                },
+                sharedPostFocus = pendingSharedPost,
+                onSharedPostFocusHandled = {
+                    pendingSharedPost = null
+                    mainVm.completeSharedPostNavigation()
                 }
             )
         }
@@ -224,3 +243,24 @@ fun MainScreen(
     }
 }
 
+private fun SharedPostPayload.toMapPostNearby(): MapPostNearby {
+    return MapPostNearby(
+        mapPostId = mapPostId,
+        convId = convId,
+        title = title,
+        description = description ?: "",
+        mediaUrls = coverUrl?.let { listOf(it) },
+        locLat = locLat,
+        locLng = locLng,
+        locName = locName ?: "Unknown location",
+        distance = 0.0,
+        creatorId = creatorId,
+        creatorUsername = creatorUsername,
+        creatorAvatar = null,
+        viewCount = 0,
+        likeCount = 0,
+        commentCount = 0,
+        postType = "ALL",
+        createdAtMs = System.currentTimeMillis()
+    )
+}

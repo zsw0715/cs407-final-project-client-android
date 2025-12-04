@@ -10,6 +10,8 @@ data class MessageDto(
     val contentText: String,
     val createdAt: String,
     val mediaUrl: String? = null,   // 图片等富媒体 URL，可为空
+    val mediaThumbUrl: String? = null,
+    val mediaMetaJson: String? = null,
     val senderNickname: String? = null,
     val senderAvatarUrl: String? = null
 )

@@ -6,6 +6,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import com.cs407.knot_client_android.data.api.MessageApi
 import com.cs407.knot_client_android.data.local.TokenStore
+import com.cs407.knot_client_android.navigation.Screen
 import com.cs407.knot_client_android.ui.main.MainViewModel
 import kotlinx.coroutines.flow.collect
 import retrofit2.Retrofit
@@ -62,7 +63,9 @@ fun ChatDetailRoute(
                             msgId = m.msgId,
                             msgType = m.msgType,
                             content = m.contentText,
-                            mediaUrl = m.mediaUrl
+                            mediaUrl = m.mediaUrl,
+                            mediaThumbUrl = m.mediaThumbUrl,
+                            mediaMetaJson = m.mediaMetaJson
                         )
                     }
                 }
@@ -83,6 +86,13 @@ fun ChatDetailRoute(
         state = state,
         onDraftChange = { text -> vm.updateDraft(text) },
         onSendMessage = { text -> vm.sendMessage(text) },
-        onSendImage = { url -> vm.sendImageMessage(url) }
+        onSendImage = { url -> vm.sendImageMessage(url) },
+        onSharedPostClick = { payload ->
+            mainVm.requestSharedPostNavigation(payload)
+            val popped = navController.popBackStack(Screen.Main.route, inclusive = false)
+            if (!popped) {
+                navController.navigate(Screen.Main.createRoute("MAP"))
+            }
+        }
     )
 }

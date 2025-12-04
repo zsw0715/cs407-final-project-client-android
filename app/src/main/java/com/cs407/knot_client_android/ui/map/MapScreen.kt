@@ -70,6 +70,7 @@ import com.cs407.knot_client_android.data.api.RetrofitProvider
 import com.cs407.knot_client_android.data.local.MapPreferences
 import com.cs407.knot_client_android.data.model.MapPost
 import com.cs407.knot_client_android.data.model.PostType
+import com.cs407.knot_client_android.data.model.SharedPostNavigation
 import com.cs407.knot_client_android.data.model.response.MapPostNearby
 import com.cs407.knot_client_android.data.repository.MapPostRepository
 import com.cs407.knot_client_android.ui.components.MapMarker
@@ -112,7 +113,9 @@ fun MapScreen(
     mainViewModel: MainViewModel,
     mapViewModel: MapViewModel,
     onPostSelected: (MapPostNearby) -> Unit = {},
-    onUserLocationChanged: (Point?) -> Unit = {}
+    onUserLocationChanged: (Point?) -> Unit = {},
+    sharedPostFocus: SharedPostNavigation? = null,
+    onSharedPostFocusHandled: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val locationManager = remember { LocationManager(context) }
@@ -145,13 +148,18 @@ fun MapScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // ★ 从 ViewModel 获取 MapPosts
-    val mapPosts = uiState.posts
+    // ★ Marker 数据源：优先使用本地缓存（含实时插入的数据），否则 fallback 到 ViewModel
+    val mapPosts = if (mapPostsCache.isNotEmpty()) {
+        mapPostsCache.values.toList()
+    } else {
+        uiState.posts
+    }
 
     // 位置状态
     var userLocation by remember { mutableStateOf<Point?>(null) }
     var hasPermission by remember { mutableStateOf(locationManager.hasLocationPermission()) }
     var centerLocationName by remember { mutableStateOf<String?>(null) }
+    val isSharedPostNavigationActive by mainViewModel.sharedPostNavigationActive.collectAsState()
     
     // // 假数据：多个地图帖子（在 Mountain View 区域）
     // val mockMapPosts = remember {
@@ -492,17 +500,19 @@ fun MapScreen(
                     userLocation = point
                     onUserLocationChanged(point)
                     // 平滑移动到用户位置
-                    mapViewportState.easeTo(
-                        cameraOptions = CameraOptions.Builder()
-                            .center(point)
-                            .zoom(15.0)
-                            .bearing(0.0)  // 旋转到正北方向
-                            .pitch(0.0)    // 重置倾斜角度
-                            .build(),
-                        animationOptions = MapAnimationOptions.mapAnimationOptions {
-                            duration(1500) // 1.5秒的平滑动画
-                        }
-                    )
+                    if (!isSharedPostNavigationActive) {
+                        mapViewportState.easeTo(
+                            cameraOptions = CameraOptions.Builder()
+                                .center(point)
+                                .zoom(15.0)
+                                .bearing(0.0)  // 旋转到正北方向
+                                .pitch(0.0)    // 重置倾斜角度
+                                .build(),
+                            animationOptions = MapAnimationOptions.mapAnimationOptions {
+                                duration(1500) // 1.5秒的平滑动画
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -535,19 +545,38 @@ fun MapScreen(
                 userLocation = point
                 onUserLocationChanged(point)
                 // 平滑移动到用户位置
-                mapViewportState.easeTo(
-                    cameraOptions = CameraOptions.Builder()
-                        .center(point)
-                        .zoom(15.0)
-                        .bearing(0.0)  // 旋转到正北方向
-                        .pitch(0.0)    // 重置倾斜角度
-                        .build(),
-                    animationOptions = MapAnimationOptions.mapAnimationOptions {
-                        duration(1500) // 1.5秒的平滑动画
-                    }
-                )
+                if (!isSharedPostNavigationActive) {
+                    mapViewportState.easeTo(
+                        cameraOptions = CameraOptions.Builder()
+                            .center(point)
+                            .zoom(15.0)
+                            .bearing(0.0)  // 旋转到正北方向
+                            .pitch(0.0)    // 重置倾斜角度
+                            .build(),
+                        animationOptions = MapAnimationOptions.mapAnimationOptions {
+                            duration(1500) // 1.5秒的平滑动画
+                        }
+                    )
+                }
             }
         }
+    }
+
+    LaunchedEffect(sharedPostFocus?.requestId) {
+        val payload = sharedPostFocus?.payload ?: return@LaunchedEffect
+        val point = Point.fromLngLat(payload.locLng, payload.locLat)
+        mapViewportState.easeTo(
+            cameraOptions = CameraOptions.Builder()
+                .center(point)
+                .zoom(16.0)
+                .bearing(0.0)
+                .pitch(0.0)
+                .build(),
+            animationOptions = MapAnimationOptions.mapAnimationOptions {
+                duration(1200)
+            }
+        )
+        onSharedPostFocusHandled()
     }
     
     // 监听地图中心和缩放变化，获取中心点地名 + 保存位置 + 加载附近帖子

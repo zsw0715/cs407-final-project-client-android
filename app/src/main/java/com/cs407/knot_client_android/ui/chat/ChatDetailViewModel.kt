@@ -21,6 +21,8 @@ data class MessageUi(
     val contentText: String,
     val msgType: Int,           // 0 = TEXT, 1 = IMAGE ...
     val mediaUrl: String? = null,
+    val mediaThumbUrl: String? = null,
+    val mediaMetaJson: String? = null,
     val senderNickname: String? = null,
     val senderAvatarUrl: String? = null,
     val isMine: Boolean,
@@ -147,6 +149,8 @@ class ChatDetailViewModel(
         msgType: Int,
         content: String,
         mediaUrl: String?,
+        mediaThumbUrl: String? = null,
+        mediaMetaJson: String? = null,
         senderNickname: String? = null,
         senderAvatarUrl: String? = null
     ) {
@@ -158,6 +162,8 @@ class ChatDetailViewModel(
             contentText = content,
             msgType = msgType,
             mediaUrl = mediaUrl,
+            mediaThumbUrl = mediaThumbUrl,
+            mediaMetaJson = mediaMetaJson,
             senderNickname = senderNickname,
             senderAvatarUrl = senderAvatarUrl,
             isMine = (fromUid == myUid),
@@ -250,6 +256,8 @@ private fun MessageDto.toUi(myUid: Long): MessageUi {
         contentText = contentText,
         msgType = msgType,
         mediaUrl = mediaUrl,
+        mediaThumbUrl = mediaThumbUrl,
+        mediaMetaJson = mediaMetaJson,
         senderNickname = senderNickname,
         senderAvatarUrl = senderAvatarUrl,
         isMine = senderId == myUid,      // ✅ 判断是不是自己

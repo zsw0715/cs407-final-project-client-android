@@ -9,7 +9,18 @@ data class MsgSend(
     val clientMsgId: String,
     val msgType: Int,              // 0 = TEXT, 1 = IMAGE ...
     val contentText: String? = null,
-    val mediaUrl: String? = null
+    val mediaUrl: String? = null,
+    val mediaThumbUrl: String? = null,
+    val mediaMetaJson: String? = null,
+    val replyToMsgId: Long? = null,
+    val loc: MsgSendLoc? = null
+)
+
+data class MsgSendLoc(
+    val lat: Double? = null,
+    val lng: Double? = null,
+    val name: String? = null,
+    val accuracy: Float? = null
 )
 
 // ACK
@@ -28,7 +39,9 @@ data class MsgNew(
     val msgId: Long,
     val msgType: Int,
     val contentText: String,
-    val mediaUrl: String? = null
+    val mediaUrl: String? = null,
+    val mediaThumbUrl: String? = null,
+    val mediaMetaJson: String? = null
 )
 
 // 只为了读 "type"
