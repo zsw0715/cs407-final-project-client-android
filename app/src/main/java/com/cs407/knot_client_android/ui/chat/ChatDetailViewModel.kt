@@ -21,6 +21,8 @@ data class MessageUi(
     val contentText: String,
     val msgType: Int,           // 0 = TEXT, 1 = IMAGE ...
     val mediaUrl: String? = null,
+    val senderNickname: String? = null,
+    val senderAvatarUrl: String? = null,
     val isMine: Boolean,
     val time: LocalDateTime,
     val sending: Boolean = false
@@ -70,6 +72,8 @@ class ChatDetailViewModel(
             contentText = content,
             msgType = 0,
             mediaUrl = null,
+            senderNickname = null,
+            senderAvatarUrl = null,
             isMine = true,
             time = LocalDateTime.now(),
             sending = true                     // 标记正在发送（可选）
@@ -111,6 +115,8 @@ class ChatDetailViewModel(
             contentText = placeholderContent,
             msgType = 1,
             mediaUrl = mediaUrl,
+            senderNickname = null,
+            senderAvatarUrl = null,
             isMine = true,
             time = LocalDateTime.now(),
             sending = true
@@ -135,7 +141,15 @@ class ChatDetailViewModel(
 
 
     /** 收到 MSG_NEW 的时候调用 */
-    fun onMsgNew(fromUid: Long, msgId: Long, msgType: Int, content: String, mediaUrl: String?) {
+    fun onMsgNew(
+        fromUid: Long,
+        msgId: Long,
+        msgType: Int,
+        content: String,
+        mediaUrl: String?,
+        senderNickname: String? = null,
+        senderAvatarUrl: String? = null
+    ) {
         val msg = MessageUi(
             msgId = msgId,
             clientMsgId = null,
@@ -144,6 +158,8 @@ class ChatDetailViewModel(
             contentText = content,
             msgType = msgType,
             mediaUrl = mediaUrl,
+            senderNickname = senderNickname,
+            senderAvatarUrl = senderAvatarUrl,
             isMine = (fromUid == myUid),
             time = LocalDateTime.now(),
             sending = false
@@ -234,6 +250,8 @@ private fun MessageDto.toUi(myUid: Long): MessageUi {
         contentText = contentText,
         msgType = msgType,
         mediaUrl = mediaUrl,
+        senderNickname = senderNickname,
+        senderAvatarUrl = senderAvatarUrl,
         isMine = senderId == myUid,      // ✅ 判断是不是自己
         time = time
     )

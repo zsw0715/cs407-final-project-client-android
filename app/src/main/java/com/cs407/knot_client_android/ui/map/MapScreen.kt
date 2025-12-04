@@ -107,6 +107,8 @@ import com.cs407.knot_client_android.data.model.WebSocketMessage
 import com.cs407.knot_client_android.data.model.MapPostNewMessage
 import com.cs407.knot_client_android.data.local.TokenStore
 import com.cs407.knot_client_android.data.model.MessageNewMessage
+import com.cs407.knot_client_android.data.model.MapPostLikeAckMessage
+import com.cs407.knot_client_android.data.model.MapPostLikeUpdateMessage
 import com.google.gson.Gson
 
 @Composable
@@ -481,6 +483,33 @@ fun MapScreen(
                                 // 更新缓存
                                 mapPostsCache = mapPostsCache + (post.mapPostId to updatedPost)
                             }
+                        }
+
+                        "MAP_POST_LIKE_ACK" -> {
+                            // 自己点赞 / 取消点赞的确认，带有最新 likeCount（不弹 snackbar）
+                            val ack = gson.fromJson(it, MapPostLikeAckMessage::class.java)
+
+                            val targetPost = mapPostsCache[ack.mapPostId]
+                            targetPost?.let { post ->
+                                val updatedPost = post.copy(likeCount = ack.likeCount)
+                                mapPostsCache = mapPostsCache + (post.mapPostId to updatedPost)
+                                mapViewModel.addOrUpdatePost(updatedPost)
+                            }
+                        }
+
+                        "MAP_POST_LIKE_UPDATE" -> {
+                            // 其他成员的点赞 / 取消点赞更新
+                            val update = gson.fromJson(it, MapPostLikeUpdateMessage::class.java)
+
+                            val targetPost = mapPostsCache[update.mapPostId]
+                            targetPost?.let { post ->
+                                val updatedPost = post.copy(likeCount = update.likeCount)
+                                mapPostsCache = mapPostsCache + (post.mapPostId to updatedPost)
+                                mapViewModel.addOrUpdatePost(updatedPost)
+                            }
+
+                            val action = if (update.liked) "liked" else "unliked"
+                            snackbarHostState.showSnackbar("❤️ ${update.userNickname} $action this post")
                         }
                     }
                 } catch (e: Exception) {
