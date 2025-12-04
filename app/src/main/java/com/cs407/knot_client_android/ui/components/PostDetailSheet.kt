@@ -70,6 +70,7 @@ import java.util.*
 data class Comment(
     val commentId: Long,
     val username: String,
+    val avatarUrl: String?,
     val content: String,
     val timestamp: String,
     val likeCount: Int
@@ -133,7 +134,8 @@ fun PostDetailSheet(
                             comments = commentsResponse.data.messageList.map { msg: ConversationMessage ->
                                 Comment(
                                     commentId = msg.msgId,
-                                    username = "User ${msg.senderId}",
+                                    username = msg.senderNickname ?: "User ${msg.senderId}",
+                                    avatarUrl = msg.senderAvatarUrl,
                                     content = msg.contentText ?: "",
                                     timestamp = formatTimestamp(msg.createdAt),
                                     likeCount = 0
@@ -172,10 +174,11 @@ fun PostDetailSheet(
                                 
                                 // 只处理当前对话的消息
                                 if (msgNew.convId == currentPostDetail.convId) {
-                                    // 创建新评论
+                                    // 创建新评论（目前后端 MSG_NEW 未携带头像信息，这里 avatarUrl 先置为 null）
                                     val newComment = Comment(
                                         commentId = msgNew.msgId,
                                         username = "User ${msgNew.fromUid}",
+                                        avatarUrl = null,
                                         content = msgNew.contentText ?: "",
                                         timestamp = "just now",
                                         likeCount = 0
@@ -223,7 +226,8 @@ fun PostDetailSheet(
                     val newComments = commentsResponse.data.messageList.map { msg: ConversationMessage ->
                         Comment(
                             commentId = msg.msgId,
-                            username = "User ${msg.senderId}",
+                            username = msg.senderNickname ?: "User ${msg.senderId}",
+                            avatarUrl = msg.senderAvatarUrl,
                             content = msg.contentText ?: "",
                             timestamp = formatTimestamp(msg.createdAt),
                             likeCount = 0
@@ -871,13 +875,34 @@ fun PostContentSection(
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 头像
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF4A90E2))
-            )
+            // 作者头像（优先使用 creatorAvatar，若为空则使用首字母占位，与 ChatDetailScreen 风格一致）
+            val creatorAvatarUrl = postDetail.creatorAvatar
+            if (!creatorAvatarUrl.isNullOrBlank()) {
+                Image(
+                    painter = rememberAsyncImagePainter(model = creatorAvatarUrl),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                val initial = postDetail.creatorUsername.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFE5E7EB)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = initial,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF6B7280)
+                    )
+                }
+            }
             
             Spacer(Modifier.width(12.dp))
             
@@ -1037,13 +1062,33 @@ fun CommentItem(comment: Comment) {
             .background(Color.White.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
             .padding(12.dp)
     ) {
-        // 头像
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(Color(0xFF4A90E2))
-        )
+        // 头像（优先使用后端返回的 avatar，若为空则使用首字母占位，风格参考 ChatDetailScreen）
+        if (!comment.avatarUrl.isNullOrBlank()) {
+            Image(
+                painter = rememberAsyncImagePainter(model = comment.avatarUrl),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            val initial = comment.username.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFE5E7EB)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = initial,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF6B7280)
+                )
+            }
+        }
         
         Spacer(Modifier.width(12.dp))
         

@@ -1,5 +1,6 @@
 package com.cs407.knot_client_android.ui.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.rememberAsyncImagePainter
 import com.cs407.knot_client_android.data.model.response.MapPostNearby
 
 /**
@@ -72,16 +74,33 @@ fun MapMarker(
                     horizontalArrangement = Arrangement.Start,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // 用户头像
-                    Box(
-                        modifier = Modifier
-                            .size(20.dp)
-                            .clip(CircleShape)
-                            // 灰色背景
-                            .background(Color(0xFFF8F6F4))
-                    ) {
-                        // 如果有头像URL可以在这里加载图片
-                        // 现在显示一个简单的背景色
+                    // 用户头像（优先使用 creatorAvatar，若为空则使用首字母占位）
+                    if (!post.creatorAvatar.isNullOrBlank()) {
+                        Image(
+                            painter = rememberAsyncImagePainter(model = post.creatorAvatar),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFF8F6F4)),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                        )
+                    } else {
+                        val initial = post.creatorUsername.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
+                        Box(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFE5E7EB)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = initial,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFF6B7280)
+                            )
+                        }
                     }
                     
                     Spacer(modifier = Modifier.width(6.dp))
