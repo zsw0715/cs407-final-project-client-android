@@ -8,7 +8,8 @@ data class MessageDto(
     val msgType: Int,
     val clientMsgId: String,
     val contentText: String,
-    val createdAt: String
+    val createdAt: String,
+    val mediaUrl: String? = null   // 图片等富媒体 URL，可为空
 )
 
 // 分页数据

@@ -1,30 +1,43 @@
 package com.cs407.knot_client_android.ui.components
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.*
 import android.graphics.RenderEffect
 import android.graphics.Shader
-import androidx.compose.animation.core.*
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.with
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -37,19 +50,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.rememberAsyncImagePainter
 import com.cs407.knot_client_android.data.model.CreateLocInfo
 import com.cs407.knot_client_android.data.model.MapPostCreateMessage
+import com.cs407.knot_client_android.data.repository.UserRepository
 import com.mapbox.geojson.Point
 import kotlinx.coroutines.launch
 import java.util.UUID
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.ui.platform.LocalContext
 
 data class Friend(
     val id: String,
@@ -107,6 +122,9 @@ fun AddPlaceSheet(
     val friendApiService = remember {
         com.cs407.knot_client_android.data.api.RetrofitProvider.createFriendService("http://10.0.2.2:8080")
     }
+    val userRepository = remember {
+        UserRepository(context.applicationContext, baseUrl = "http://10.0.2.2:8080")
+    }
 
     // 朋友列表状态
     var friends by remember { mutableStateOf(emptyList<Friend>()) }
@@ -128,6 +146,30 @@ fun AddPlaceSheet(
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
+            }
+        }
+    }
+
+    // 照片选择器：从相册中选择后，上传到 S3 并把 URL 填入 photos 列表
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            coroutineScope.launch {
+                try {
+                    val resolver = context.contentResolver
+                    val type = resolver.getType(uri) ?: "image/jpeg"
+                    val bytes = resolver.openInputStream(uri)?.use { it.readBytes() }
+                    if (bytes == null) {
+                        // 简单失败提示（可按需改成 Snackbar）
+                        return@launch
+                    }
+                    // 复用头像上传的 S3 逻辑，这里同样返回公开 URL
+                    val uploadedUrl = userRepository.uploadAvatarToS3(bytes, type)
+                    photos = photos + uploadedUrl
+                } catch (_: Exception) {
+                    // 失败时先静默，避免打断主流程
+                }
             }
         }
     }
@@ -391,11 +433,8 @@ fun AddPlaceSheet(
                     AnimatedContent(
                         targetState = currentMode,
                         transitionSpec = {
-                            fadeIn(animationSpec = tween(300)) togetherWith fadeOut(
-                                animationSpec = tween(
-                                    300
-                                )
-                            )
+                            fadeIn(animationSpec = tween(300)) with
+                                fadeOut(animationSpec = tween(300))
                         },
                         label = "content_mode"
                     ) { mode ->
@@ -420,7 +459,8 @@ fun AddPlaceSheet(
                                         onDescriptionChange = { description = it },
                                         photos = photos,
                                         onAddPhoto = {
-                                            photos = photos + "new_photo_${photos.size + 1}"
+                                            // 打开系统相册选择图片
+                                            photoPickerLauncher.launch("image/*")
                                         },
                                         onRemoveLocation = { selectedLocation = null }
                                     )
@@ -496,6 +536,15 @@ fun AddPlaceSheet(
                             )
 
                             onPostKnot(uiMsg)
+
+                            // 本地状态重置：清空表单和图片，回到初始状态
+                            title = ""
+                            description = ""
+                            selectedLocation = null
+                            photos = emptyList()
+                            shareType = ShareType.ALL_FRIENDS
+                            selectedFriends = emptyList()
+                            isLoading = false
                         }
                     }
                 )
@@ -672,7 +721,7 @@ private fun FormContent(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            // 已添加的照片
+            // 已添加的照片预览
             items(photos) { photoUrl ->
                 Box(
                     modifier = Modifier
@@ -680,10 +729,13 @@ private fun FormContent(
                         .clip(RoundedCornerShape(12.dp))
                         .background(Color(0xFFE5E7EB))
                 ) {
-                    Text(
-                        text = "Photo",
-                        modifier = Modifier.align(Alignment.Center),
-                        color = Color(0xFF9B9B9B)
+                    Image(
+                        painter = rememberAsyncImagePainter(model = photoUrl),
+                        contentDescription = "Selected photo",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(12.dp)),
+                        contentScale = ContentScale.Crop
                     )
                 }
             }

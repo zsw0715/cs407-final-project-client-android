@@ -19,6 +19,8 @@ data class MessageUi(
     val fromUid: Long,
     val convId: Long,
     val contentText: String,
+    val msgType: Int,           // 0 = TEXT, 1 = IMAGE ...
+    val mediaUrl: String? = null,
     val isMine: Boolean,
     val time: LocalDateTime,
     val sending: Boolean = false
@@ -66,6 +68,8 @@ class ChatDetailViewModel(
             fromUid = myUid,
             convId = convId,
             contentText = content,
+            msgType = 0,
+            mediaUrl = null,
             isMine = true,
             time = LocalDateTime.now(),
             sending = true                     // 标记正在发送（可选）
@@ -83,22 +87,63 @@ class ChatDetailViewModel(
             convId = convId,
             clientMsgId = clientMsgId,
             msgType = 0,
-            contentText = content
+            contentText = content,
+            mediaUrl = null
         )
         val json = msg.toJson()
 
         sendRawJson(json)
     }
 
+    /** UI 调用：发送一条图片消息 (msgType = 1, 带 mediaUrl) */
+    fun sendImageMessage(mediaUrl: String) {
+        if (mediaUrl.isBlank()) return
+
+        val clientMsgId = "c-${System.currentTimeMillis()}"
+
+        // 在列表中先插入一条占位消息，后续可以扩展为真正的图片气泡
+        val placeholderContent = "[image]"
+        val newMsg = MessageUi(
+            msgId = -1,
+            clientMsgId = clientMsgId,
+            fromUid = myUid,
+            convId = convId,
+            contentText = placeholderContent,
+            msgType = 1,
+            mediaUrl = mediaUrl,
+            isMine = true,
+            time = LocalDateTime.now(),
+            sending = true
+        )
+
+        _ui.update { state ->
+            state.copy(
+                messages = state.messages + newMsg
+            )
+        }
+
+        val msg = MsgSend(
+            convId = convId,
+            clientMsgId = clientMsgId,
+            msgType = 1,
+            contentText = "",
+            mediaUrl = mediaUrl
+        )
+        val json = msg.toJson()
+        sendRawJson(json)
+    }
+
 
     /** 收到 MSG_NEW 的时候调用 */
-    fun onMsgNew(fromUid: Long, msgId: Long, content: String) {
+    fun onMsgNew(fromUid: Long, msgId: Long, msgType: Int, content: String, mediaUrl: String?) {
         val msg = MessageUi(
             msgId = msgId,
             clientMsgId = null,
             fromUid = fromUid,
             convId = convId,
             contentText = content,
+            msgType = msgType,
+            mediaUrl = mediaUrl,
             isMine = (fromUid == myUid),
             time = LocalDateTime.now(),
             sending = false
@@ -187,6 +232,8 @@ private fun MessageDto.toUi(myUid: Long): MessageUi {
         fromUid = senderId,              // ✅ 用 senderId
         convId = convId,
         contentText = contentText,
+        msgType = msgType,
+        mediaUrl = mediaUrl,
         isMine = senderId == myUid,      // ✅ 判断是不是自己
         time = time
     )

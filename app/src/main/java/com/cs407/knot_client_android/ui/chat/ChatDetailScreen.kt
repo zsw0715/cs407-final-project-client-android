@@ -2,6 +2,8 @@ package com.cs407.knot_client_android.ui.chat
 
 import android.graphics.RenderEffect
 import android.graphics.Shader
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.Animatable
@@ -14,14 +16,15 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.with
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -40,32 +43,33 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
-import com.cs407.knot_client_android.navigation.Screen
-import com.cs407.knot_client_android.data.repository.UserRepository
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.foundation.Image
-import androidx.compose.ui.input.pointer.pointerInput
 import coil.compose.rememberAsyncImagePainter
+import com.cs407.knot_client_android.data.repository.UserRepository
+import com.cs407.knot_client_android.navigation.Screen
 import com.cs407.knot_client_android.ui.components.FloatingActionButton
 import java.time.Duration
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
@@ -74,6 +78,7 @@ fun ChatDetailScreen(
     state: ChatDetailUiState,
     onDraftChange: (String) -> Unit,
     onSendMessage: (String) -> Unit,
+    onSendImage: (String) -> Unit = {},
     onEditClick: () -> Unit = {}
 ) {
     Column(
@@ -144,6 +149,7 @@ fun ChatDetailScreen(
 
         // 当前用户昵称（用于右侧消息头像），优先从 TokenStore 取；拿不到就用 "Me"
         val context = LocalContext.current
+        val coroutineScope = rememberCoroutineScope()
         val selfName = remember {
             com.cs407.knot_client_android.data.local.TokenStore(context).getUsername()
                 ?: "Me"
@@ -180,6 +186,30 @@ fun ChatDetailScreen(
         var isAttachmentPanelOpen by remember { mutableStateOf(false) }
         // 底部附件面板下滑跟随偏移（像素）
         var sheetDragOffset by remember { mutableStateOf(0f) }
+
+        // 照片选择 & 上传：从系统相册选图 -> 上传到 S3 -> 发送图片消息
+        val imageUploadRepository = remember {
+            UserRepository(context.applicationContext, baseUrl = "http://10.0.2.2:8080")
+        }
+        val photoPickerLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.GetContent()
+        ) { uri ->
+            if (uri != null) {
+                coroutineScope.launch {
+                    try {
+                        val resolver = context.contentResolver
+                        val type = resolver.getType(uri) ?: "image/jpeg"
+                        val bytes = resolver.openInputStream(uri)?.use { it.readBytes() }
+                        if (bytes == null) return@launch
+
+                        val uploadedUrl = imageUploadRepository.uploadAvatarToS3(bytes, type)
+                        onSendImage(uploadedUrl)
+                    } catch (_: Exception) {
+                        // 失败时先静默处理，避免打断聊天体验
+                    }
+                }
+            }
+        }
 
         // 每次重新打开附件面板时，重置偏移，避免沿用上次关闭时的位置
         LaunchedEffect(isAttachmentPanelOpen) {
@@ -405,8 +435,11 @@ fun ChatDetailScreen(
                                     Column(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .clickable {
-
+                                            .clickable(
+                                                interactionSource = remember { MutableInteractionSource() },
+                                                indication = null
+                                            ) {
+                                                photoPickerLauncher.launch("image/*")
                                             },
                                         horizontalAlignment = Alignment.CenterHorizontally
                                     ) {
@@ -483,21 +516,41 @@ private fun MessageBubble(
             Spacer(modifier = Modifier.width(10.dp))
         }
 
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(22.dp)) // 四周圆角，更现代的 pill 形状
-                .background(
-                    if (msg.isMine) Color(0xFF636EF1)   // 品牌浅紫蓝
-                    else Color.White.copy(alpha = 0.96f)
+        if (msg.msgType == 1 && msg.mediaUrl != null) {
+            // 图片消息气泡
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(Color.Transparent)
+            ) {
+                Image(
+                    painter = rememberAsyncImagePainter(model = msg.mediaUrl),
+                    contentDescription = "Image message",
+                    modifier = Modifier
+                        .width(220.dp)
+                        .heightIn(min = 140.dp)
+                        .clip(RoundedCornerShape(18.dp)),
+                    contentScale = ContentScale.Crop
                 )
-                .padding(horizontal = 14.dp, vertical = 10.dp)
-        ) {
-            Text(
-                text = msg.contentText,
-                color = if (msg.isMine) Color.White else Color(0xFF111827),
-                fontSize = 15.sp,                     // 稍微放大一点
-                lineHeight = 20.sp
-            )
+            }
+        } else {
+            // 文本消息气泡
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(22.dp)) // 四周圆角，更现代的 pill 形状
+                    .background(
+                        if (msg.isMine) Color(0xFF636EF1)   // 品牌浅紫蓝
+                        else Color.White.copy(alpha = 0.96f)
+                    )
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
+            ) {
+                Text(
+                    text = msg.contentText,
+                    color = if (msg.isMine) Color.White else Color(0xFF111827),
+                    fontSize = 15.sp,                     // 稍微放大一点
+                    lineHeight = 20.sp
+                )
+            }
         }
 
         if (msg.isMine) {
