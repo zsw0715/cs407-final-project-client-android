@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.Create
 import androidx.compose.material.icons.outlined.FavoriteBorder
 //import androidx.compose.material.icons.outlined.ChatBubbleOutline
@@ -59,6 +60,8 @@ import com.cs407.knot_client_android.data.model.response.MapPostDetailResponse
 import com.cs407.knot_client_android.data.model.response.MapPostNearby
 import com.cs407.knot_client_android.data.model.WebSocketMessage
 import com.cs407.knot_client_android.data.model.MessageNewMessage
+import com.cs407.knot_client_android.data.model.MapPostLikeAckMessage
+import com.cs407.knot_client_android.data.model.MapPostLikeUpdateMessage
 import com.cs407.knot_client_android.ui.main.MainViewModel
 import com.google.gson.Gson
 import coil.compose.rememberAsyncImagePainter
@@ -93,6 +96,8 @@ fun PostDetailSheet(
     var isLoadingComments by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var localCommentCount by remember { mutableStateOf(0) }
+    var localLikeCount by remember { mutableStateOf(0) }
+    var isLikedByMe by remember { mutableStateOf(false) }
     
     // 分页状态
     var currentPage by remember { mutableStateOf(1) }
@@ -115,6 +120,8 @@ fun PostDetailSheet(
                 if (response.success && response.data != null) {
                     postDetail = response.data
                     localCommentCount = response.data.commentCount
+                    localLikeCount = response.data.likeCount
+                    isLikedByMe = response.data.isLikedByCurrentUser
                     
                     // 加载评论（第一页）
                     isLoadingComments = true
@@ -159,7 +166,7 @@ fun PostDetailSheet(
         }
     }
     
-    // 🔔 监听 WebSocket 消息（实时接收新评论）
+    // 🔔 监听 WebSocket 消息（实时接收新评论 / 点赞更新）
     LaunchedEffect(isVisible, postDetail?.convId) {
         postDetail?.let { currentPostDetail ->
             if (isVisible) {
@@ -168,27 +175,45 @@ fun PostDetailSheet(
                         try {
                             val gson = Gson()
                             val baseMessage = gson.fromJson(it, WebSocketMessage::class.java)
-                            
-                            if (baseMessage.type == "MSG_NEW") {
-                                val msgNew = gson.fromJson(it, MessageNewMessage::class.java)
-                                
-                                // 只处理当前对话的消息
-                                if (msgNew.convId == currentPostDetail.convId) {
-                                    // 创建新评论（目前后端 MSG_NEW 未携带头像信息，这里 avatarUrl 先置为 null）
-                                    val newComment = Comment(
-                                        commentId = msgNew.msgId,
-                                        username = "User ${msgNew.fromUid}",
-                                        avatarUrl = null,
-                                        content = msgNew.contentText ?: "",
-                                        timestamp = "just now",
-                                        likeCount = 0
-                                    )
-                                    
-                                    // 添加到评论列表开头
-                                    comments = listOf(newComment) + comments
-                                    
-                                    // 本地评论数 +1
-                                    localCommentCount += 1
+
+                            when (baseMessage.type) {
+                                "MSG_NEW" -> {
+                                    val msgNew = gson.fromJson(it, MessageNewMessage::class.java)
+
+                                    // 只处理当前对话的消息
+                                    if (msgNew.convId == currentPostDetail.convId) {
+                                        // 创建新评论（目前后端 MSG_NEW 未携带头像信息，这里 avatarUrl 先置为 null）
+                                        val newComment = Comment(
+                                            commentId = msgNew.msgId,
+                                            username = "User ${msgNew.fromUid}",
+                                            avatarUrl = null,
+                                            content = msgNew.contentText ?: "",
+                                            timestamp = "just now",
+                                            likeCount = 0
+                                        )
+
+                                        // 添加到评论列表开头
+                                        comments = listOf(newComment) + comments
+
+                                        // 本地评论数 +1
+                                        localCommentCount += 1
+                                    }
+                                }
+
+                                "MAP_POST_LIKE_ACK" -> {
+                                    val ack = gson.fromJson(it, MapPostLikeAckMessage::class.java)
+                                    if (ack.mapPostId == currentPostDetail.mapPostId) {
+                                        localLikeCount = ack.likeCount
+                                        isLikedByMe = ack.liked
+                                    }
+                                }
+
+                                "MAP_POST_LIKE_UPDATE" -> {
+                                    val update = gson.fromJson(it, MapPostLikeUpdateMessage::class.java)
+                                    if (update.mapPostId == currentPostDetail.mapPostId) {
+                                        localLikeCount = update.likeCount
+                                        // 是否自己点赞由 ACK 决定，这里只同步计数
+                                    }
                                 }
                             }
                         } catch (e: Exception) {
@@ -243,12 +268,36 @@ fun PostDetailSheet(
             }
         }
     }
-    
+
+    // 点赞点击逻辑（乐观更新 + 发送 WebSocket）
+    val onToggleLike: () -> Unit = like@{
+        val detail = postDetail ?: return@like
+        val mapPostId = detail.mapPostId
+        val newLiked = !isLikedByMe
+
+        // 本地乐观更新
+        isLikedByMe = newLiked
+        localLikeCount = (localLikeCount + if (newLiked) 1 else -1).coerceAtLeast(0)
+
+        // 构建并发送 MAP_POST_LIKE 消息
+        val message = mapOf(
+            "type" to "MAP_POST_LIKE",
+            "clientReqId" to "like-$mapPostId-${System.currentTimeMillis()}",
+            "mapPostId" to mapPostId,
+            "liked" to newLiked
+        )
+        val gson = Gson()
+        val json = gson.toJson(message)
+        mainViewModel.send(json)
+    }
+
     PostDetailSheetContent(
         post = post,
         postDetail = postDetail,
         comments = comments,
         localCommentCount = localCommentCount,
+        localLikeCount = localLikeCount,
+        isLikedByMe = isLikedByMe,
         currentPage = currentPage,
         isVisible = isVisible,
         isLoadingDetail = isLoadingDetail,
@@ -259,6 +308,7 @@ fun PostDetailSheet(
         onDismiss = onDismiss,
         mainViewModel = mainViewModel,
         onLoadMoreComments = loadMoreComments,
+        onToggleLike = onToggleLike,
         modifier = modifier
     )
 }
@@ -293,6 +343,8 @@ private fun PostDetailSheetContent(
     postDetail: MapPostDetailResponse?,
     comments: List<Comment>,
     localCommentCount: Int,
+    localLikeCount: Int,
+    isLikedByMe: Boolean,
     currentPage: Int,
     isVisible: Boolean,
     isLoadingDetail: Boolean,
@@ -303,6 +355,7 @@ private fun PostDetailSheetContent(
     onDismiss: () -> Unit,
     mainViewModel: MainViewModel,
     onLoadMoreComments: suspend () -> Unit,
+    onToggleLike: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val configuration = LocalConfiguration.current
@@ -552,7 +605,10 @@ private fun PostDetailSheetContent(
                                     postDetail = postDetail,
                                     post = post,
                                     localCommentCount = localCommentCount,
+                                    localLikeCount = localLikeCount,
+                                    isLikedByMe = isLikedByMe,
                                     onCommentClick = { onCommentClick() },
+                                    onToggleLike = onToggleLike,
                                     onDrag = { dragAmount ->
                                         // 实时跟随手指
                                         val newHeight = (animatedHeight.value - dragAmount).coerceIn(
@@ -837,7 +893,10 @@ fun PostContentSection(
     postDetail: MapPostDetailResponse,
     post: MapPostNearby?,
     localCommentCount: Int, // 本地评论数（实时更新）
+    localLikeCount: Int,
+    isLikedByMe: Boolean,
     onCommentClick: () -> Unit = {},
+    onToggleLike: () -> Unit = {},
     onDrag: (Float) -> Unit = {},
     onDragStart: () -> Unit = {},
     onDragEnd: () -> Unit = {},
@@ -998,9 +1057,10 @@ fun PostContentSection(
                 label = "Views"
             )
             StatItem(
-                icon = Icons.Outlined.FavoriteBorder,
-                count = postDetail.likeCount,
-                label = "Likes"
+                icon = if (isLikedByMe) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                count = localLikeCount,
+                label = "Likes",
+                onClick = onToggleLike
             )
             StatItem(
                 icon = Icons.Outlined.Create,

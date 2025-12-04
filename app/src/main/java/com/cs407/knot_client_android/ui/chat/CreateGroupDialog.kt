@@ -131,11 +131,11 @@ fun CreateGroupDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(max = 260.dp)
-                    ) {
-                        items(friends) { friend ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
+                ) {
+                    items(friends) { friend ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
                                     .clip(RoundedCornerShape(18.dp))
                                     .background(Color.White.copy(alpha = 0.95f))
                                     .clickable(
@@ -143,8 +143,8 @@ fun CreateGroupDialog(
                                         indication = null
                                     ) { toggleFriend(friend.id) }
                                     .padding(horizontal = 12.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                                 // 头像：有 avatarUrl 用网络图片，否则用首字母占位（仿 ChatDetailScreen）
                                 if (!friend.avatarUrl.isNullOrBlank()) {
                                     Image(
@@ -182,23 +182,23 @@ fun CreateGroupDialog(
                                     )
                                 }
 
-                                Checkbox(
-                                    checked = friend.selected,
-                                    onCheckedChange = { toggleFriend(friend.id) }
-                                )
-                            }
+                            Checkbox(
+                                checked = friend.selected,
+                                onCheckedChange = { toggleFriend(friend.id) }
+                            )
+                        }
 
                             Spacer(Modifier.height(6.dp))
-                        }
                     }
                 }
+            }
 
                 Spacer(Modifier.height(16.dp))
 
                 Button(
-                    onClick = {
-                        val ids = friends.filter { it.selected }.map { it.id }
-                        onConfirm(groupName.trim(), ids)
+                onClick = {
+                    val ids = friends.filter { it.selected }.map { it.id }
+                    onConfirm(groupName.trim(), ids)
                     },
                     enabled = canCreate,
                     modifier = Modifier

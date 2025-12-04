@@ -45,6 +45,32 @@ data class MessageNewMessage(
 )
 
 /**
+ * 点赞确认 (MAP_POST_LIKE_ACK)
+ */
+data class MapPostLikeAckMessage(
+    val type: String,
+    val mapPostId: Long,
+    val liked: Boolean,
+    val likeCount: Int,
+    val clientReqId: String,
+    val serverTime: Long,
+    val likerNickname: String
+)
+
+/**
+ * 其他成员收到的点赞更新推送 (MAP_POST_LIKE_UPDATE)
+ */
+data class MapPostLikeUpdateMessage(
+    val type: String,
+    val mapPostId: Long,
+    val userId: Long,
+    val liked: Boolean,
+    val likeCount: Int,
+    val userNickname: String,
+    val serverTime: Long
+)
+
+/**
  * 前端发送创建地图帖子的消息 (MAP_POST_CREATE)
  */
 data class MapPostCreateMessage(
