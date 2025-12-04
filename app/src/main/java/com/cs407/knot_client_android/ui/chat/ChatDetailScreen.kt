@@ -503,8 +503,11 @@ private fun MessageBubble(
     selfAvatarUrl: String?,
     otherAvatarUrl: String?
 ) {
-    val displayName = if (msg.isMine) selfName else otherName
-    val avatarUrl = if (msg.isMine) selfAvatarUrl else otherAvatarUrl
+    val displayName = msg.senderNickname
+        ?: if (msg.isMine) selfName else otherName
+
+    val avatarUrl = msg.senderAvatarUrl
+        ?: if (msg.isMine) selfAvatarUrl else otherAvatarUrl
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -516,40 +519,53 @@ private fun MessageBubble(
             Spacer(modifier = Modifier.width(10.dp))
         }
 
-        if (msg.msgType == 1 && msg.mediaUrl != null) {
-            // 图片消息气泡
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(Color.Transparent)
-            ) {
-                Image(
-                    painter = rememberAsyncImagePainter(model = msg.mediaUrl),
-                    contentDescription = "Image message",
-                    modifier = Modifier
-                        .width(220.dp)
-                        .heightIn(min = 140.dp)
-                        .clip(RoundedCornerShape(18.dp)),
-                    contentScale = ContentScale.Crop
+        Column(
+            horizontalAlignment = if (msg.isMine) Alignment.End else Alignment.Start
+        ) {
+            if (!msg.isMine && !displayName.isNullOrBlank()) {
+                Text(
+                    text = displayName,
+                    fontSize = 11.sp,
+                    color = Color(0xFF6B7280),
+                    modifier = Modifier.padding(start = 4.dp, bottom = 2.dp)
                 )
             }
-        } else {
-            // 文本消息气泡
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(22.dp)) // 四周圆角，更现代的 pill 形状
-                    .background(
-                        if (msg.isMine) Color(0xFF636EF1)   // 品牌浅紫蓝
-                        else Color.White.copy(alpha = 0.96f)
+
+            if (msg.msgType == 1 && msg.mediaUrl != null) {
+                // 图片消息气泡
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(Color.Transparent)
+                ) {
+                    Image(
+                        painter = rememberAsyncImagePainter(model = msg.mediaUrl),
+                        contentDescription = "Image message",
+                        modifier = Modifier
+                            .width(220.dp)
+                            .heightIn(min = 140.dp)
+                            .clip(RoundedCornerShape(18.dp)),
+                        contentScale = ContentScale.Crop
                     )
-                    .padding(horizontal = 14.dp, vertical = 10.dp)
-            ) {
-                Text(
-                    text = msg.contentText,
-                    color = if (msg.isMine) Color.White else Color(0xFF111827),
-                    fontSize = 15.sp,                     // 稍微放大一点
-                    lineHeight = 20.sp
-                )
+                }
+            } else {
+                // 文本消息气泡
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(
+                            if (msg.isMine) Color(0xFF636EF1)
+                            else Color.White.copy(alpha = 0.96f)
+                        )
+                        .padding(horizontal = 14.dp, vertical = 10.dp)
+                ) {
+                    Text(
+                        text = msg.contentText,
+                        color = if (msg.isMine) Color.White else Color(0xFF111827),
+                        fontSize = 15.sp,
+                        lineHeight = 20.sp
+                    )
+                }
             }
         }
 
@@ -575,7 +591,7 @@ private fun MessageAvatar(name: String, avatarUrl: String?) {
         val initial = name.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
         Box(
             modifier = Modifier
-                .size(40.dp) // 头像更大一些
+                .size(40.dp)
                 .clip(CircleShape)
                 .background(Color(0xFFE5E7EB)),
             contentAlignment = Alignment.Center

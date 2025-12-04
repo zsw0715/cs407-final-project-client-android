@@ -109,7 +109,8 @@ fun AddPlaceSheet(
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var shareType by remember { mutableStateOf(ShareType.ALL_FRIENDS) }
-    var selectedFriends by remember { mutableStateOf(emptyList<String>()) }
+    // 用索引而不是 id 来记录选中的好友，避免后端 userId 异常导致全部高亮
+    var selectedFriends by remember { mutableStateOf(emptyList<Int>()) }
     var selectedLocation by remember { mutableStateOf<Location?>(null) }
     var photos by remember { mutableStateOf(emptyList<String>()) }
     var isLoading by remember { mutableStateOf(false) }
@@ -471,11 +472,11 @@ fun AddPlaceSheet(
                                 FriendSelectionContent(
                                     friends = friends,
                                     selectedFriends = selectedFriends,
-                                    onFriendToggle = { friendId ->
-                                        selectedFriends = if (selectedFriends.contains(friendId)) {
-                                            selectedFriends - friendId
+                                    onFriendToggle = { index ->
+                                        selectedFriends = if (selectedFriends.contains(index)) {
+                                            selectedFriends - index
                                         } else if (selectedFriends.size < 3) {
-                                            selectedFriends + friendId
+                                            selectedFriends + index
                                         } else {
                                             selectedFriends
                                         }
@@ -517,8 +518,10 @@ fun AddPlaceSheet(
 
                             val memberIdLongs: List<Long>? =
                                 if (!allFriends && selectedFriends.isNotEmpty()) {
-                                    // 这里先简单用 Long.parseLong，如果你的 id 是 String，需要自己转换
-                                    selectedFriends.mapNotNull { it.toLongOrNull() }
+                                    // 根据选中索引映射到对应好友的 userId
+                                    selectedFriends.mapNotNull { idx ->
+                                        friends.getOrNull(idx)?.id?.toLongOrNull()
+                                    }
                                 } else null
 
                             val uiMsg = MapPostCreateMessage(
@@ -770,8 +773,8 @@ private fun FormContent(
 @Composable
 private fun FriendSelectionContent(
     friends: List<Friend>,
-    selectedFriends: List<String>,
-    onFriendToggle: (String) -> Unit,
+    selectedFriends: List<Int>,
+    onFriendToggle: (Int) -> Unit,
     maxFriends: Int,
     modifier: Modifier = Modifier
 ) {
@@ -799,12 +802,13 @@ private fun FriendSelectionContent(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            items(friends) { friend ->
-                val isSelected = selectedFriends.contains(friend.id)
+            items(friends.size) { index ->
+                val friend = friends[index]
+                val isSelected = selectedFriends.contains(index)
                 FriendSelectionItem(
                     friend = friend,
                     isSelected = isSelected,
-                    onToggle = { onFriendToggle(friend.id) }
+                    onToggle = { onFriendToggle(index) }
                 )
             }
         }

@@ -109,7 +109,8 @@ fun ChatScreen(
                 friendList = resp.data.map { dto ->
                     SelectableFriendUi(
                         id = dto.friendId,
-                        name = dto.username
+                        name = dto.username,
+                        avatarUrl = dto.avatar
                     )
                 }
             } else {
