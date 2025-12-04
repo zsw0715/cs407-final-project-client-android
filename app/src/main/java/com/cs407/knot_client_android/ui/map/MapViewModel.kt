@@ -117,6 +117,16 @@ class MapViewModel : ViewModel() {
         }
     }
 
+    /**
+     * 删除指定 mapPostId 的帖子（用于本地 UI 同步）
+     */
+    fun removePostById(mapPostId: Long) {
+        _uiState.update { state ->
+            val newList = state.posts.filterNot { it.mapPostId == mapPostId }
+            state.copy(posts = newList)
+        }
+    }
+
     fun clearError() {
         _uiState.update { it.copy(errorMessage = null) }
     }

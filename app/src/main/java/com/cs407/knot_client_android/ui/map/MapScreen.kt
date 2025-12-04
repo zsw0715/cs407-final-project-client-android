@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Place
+import androidx.compose.material3.AlertDialog
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.cs407.knot_client_android.R
@@ -78,6 +79,7 @@ import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.TextButton
 import com.mapbox.geojson.Point
 import com.mapbox.maps.CameraOptions
 import com.mapbox.maps.MapInitOptions
@@ -103,6 +105,7 @@ import kotlinx.coroutines.launch
 import com.cs407.knot_client_android.ui.main.MainViewModel
 import com.cs407.knot_client_android.data.model.WebSocketMessage
 import com.cs407.knot_client_android.data.model.MapPostNewMessage
+import com.cs407.knot_client_android.data.local.TokenStore
 import com.cs407.knot_client_android.data.model.MessageNewMessage
 import com.google.gson.Gson
 
@@ -153,6 +156,16 @@ fun MapScreen(
     var hasPermission by remember { mutableStateOf(locationManager.hasLocationPermission()) }
     var centerLocationName by remember { mutableStateOf<String?>(null) }
     
+    // 当前用户 ID，用于判断是否显示删除入口
+    val tokenStore = remember(context.applicationContext) {
+        TokenStore(context.applicationContext)
+    }
+    val myUid: Long = tokenStore.getUserId() ?: 0L
+
+    // 删除帖子对话框状态
+    var selectedPostForDelete by remember { mutableStateOf<MapPostNearby?>(null) }
+    var isDeleteDialogVisible by remember { mutableStateOf(false) }
+
     // // 假数据：多个地图帖子（在 Mountain View 区域）
     // val mockMapPosts = remember {
     //     listOf(
@@ -797,6 +810,13 @@ fun MapScreen(
                                     onClick = {
                                         // 点击 marker 后通知 MainScreen 打开帖子详情 Sheet
                                         onPostSelected(post)
+                                    },
+                                    onLongPress = {
+                                        // 只有作者本人才能看到删除弹窗
+                                        if (post.creatorId == myUid) {
+                                            selectedPostForDelete = post
+                                            isDeleteDialogVisible = true
+                                        }
                                     }
                                 )
                             }
@@ -1041,6 +1061,59 @@ fun MapScreen(
         //         fontSize = 12.sp
         //     )
         // }
+
+        // 删除帖子确认对话框
+        if (isDeleteDialogVisible && selectedPostForDelete != null) {
+            val postToDelete = selectedPostForDelete!!
+            AlertDialog(
+                onDismissRequest = {
+                    isDeleteDialogVisible = false
+                    selectedPostForDelete = null
+                },
+                title = { Text(text = "Delete post?") },
+                text = {
+                    Text(
+                        text = "Are you sure you want to delete this post?\n\"${postToDelete.title}\"",
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            // 先立刻关闭对话框，避免等待网络请求时 UI 卡在弹窗上
+                            isDeleteDialogVisible = false
+                            selectedPostForDelete = null
+
+                            scope.launch {
+                                try {
+                                    // 使用共享的 repository 删除帖子
+                                    mapPostRepository.deleteMapPost(postToDelete.mapPostId)
+
+                                    // 从缓存和 ViewModel 状态中移除该帖子
+                                    mapPostsCache = mapPostsCache - postToDelete.mapPostId
+                                    mapViewModel.removePostById(postToDelete.mapPostId)
+
+                                    snackbarHostState.showSnackbar("Post deleted")
+                                } catch (e: Exception) {
+                                    snackbarHostState.showSnackbar(e.message ?: "Failed to delete post")
+                                }
+                            }
+                        }
+                    ) {
+                        Text(text = "Delete")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            isDeleteDialogVisible = false
+                            selectedPostForDelete = null
+                        }
+                    ) {
+                        Text(text = "Cancel")
+                    }
+                }
+            )
+        }
 
         // Loading Indicator - 左上角
         if (isLoadingPosts) {

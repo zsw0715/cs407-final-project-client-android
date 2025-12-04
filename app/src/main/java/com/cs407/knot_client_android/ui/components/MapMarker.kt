@@ -2,7 +2,7 @@ package com.cs407.knot_client_android.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -28,7 +28,8 @@ import com.cs407.knot_client_android.data.model.response.MapPostNearby
 @Composable
 fun MapMarker(
     post: MapPostNearby,
-    onClick: () -> Unit = {}
+    onClick: () -> Unit = {},
+    onLongPress: () -> Unit = {}
 ) {
     val cornerRadius = RoundedCornerShape(15.dp)
     val interactionSource = remember { MutableInteractionSource() }
@@ -45,10 +46,11 @@ fun MapMarker(
                 .clip(cornerRadius)
                 .background(Color(0xFFF5F0E8)) // 米黄色背景
                 .border(2.dp, Color(0xFF8B7355), cornerRadius)
-                .clickable(
+                .combinedClickable(
                     interactionSource = interactionSource,
                     indication = ripple(color = Color(0xFF8B7355)),
-                    onClick = onClick
+                    onClick = onClick,
+                    onLongClick = onLongPress
                 )
                 .padding(horizontal = 8.dp, vertical = 3.dp)
         ) {

@@ -99,5 +99,20 @@ class MapPostRepository(context: Context, baseUrl: String) {
             error(response.error ?: response.message)
         }
     }
+
+    /**
+     * 删除指定地图帖子（仅作者有权限，后端会做权限校验）
+     */
+    suspend fun deleteMapPost(mapPostId: Long) {
+        val token = tokenStore.getAccessToken()
+        if (token.isNullOrBlank()) {
+            error("未登录，无法删除帖子")
+        }
+
+        val response = apiService.deleteMapPost("Bearer $token", mapPostId)
+        if (!response.success) {
+            error(response.error ?: response.message ?: "删除帖子失败")
+        }
+    }
 }
 
