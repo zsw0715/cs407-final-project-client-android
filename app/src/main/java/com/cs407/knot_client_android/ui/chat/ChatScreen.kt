@@ -81,7 +81,7 @@ fun ChatScreen(
     val tokenStore = remember { TokenStore(appContext) }
 
     // Production server address
-    val baseUrl = "http://3.144.236.205:8080"
+    val baseUrl = "http://10.0.2.2:8080"
     val friendApi = remember { RetrofitProvider.createFriendService(baseUrl) }
     val conversationApi = remember { RetrofitProvider.createConversationService(baseUrl) }
 

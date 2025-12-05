@@ -120,7 +120,7 @@ fun PostDetailSheet(
 ) {
     val context = LocalContext.current
     val tokenStore = remember(context) { TokenStore(context) }
-    val baseUrl = remember { "http://3.144.236.205:8080" }
+    val baseUrl = remember { "http://10.0.2.2:8080" }
     val mapPostApi = remember { RetrofitProvider.createMapPostService(baseUrl) }
     val friendApi = remember { RetrofitProvider.createFriendService(baseUrl) }
     val conversationApi = remember { RetrofitProvider.createConversationService(baseUrl) }
@@ -298,7 +298,7 @@ fun PostDetailSheet(
             try {
                 val tokenStore = TokenStore(context)
                 val token = tokenStore.getAccessToken()
-                val apiService = RetrofitProvider.createMapPostService("http://3.144.236.205:8080")
+                val apiService = RetrofitProvider.createMapPostService("http://10.0.2.2:8080")
                 
                 val response = apiService.getMapPostDetail("Bearer $token", post.mapPostId)
                 if (response.success && response.data != null) {
@@ -417,7 +417,7 @@ fun PostDetailSheet(
                 try {
                     val tokenStore = TokenStore(context)
                     val token = tokenStore.getAccessToken()
-                    val apiService = RetrofitProvider.createMapPostService("http://3.144.236.205:8080")
+                    val apiService = RetrofitProvider.createMapPostService("http://10.0.2.2:8080")
                     
                     val commentsResponse = apiService.getConversationMessages(
                         token = "Bearer $token",

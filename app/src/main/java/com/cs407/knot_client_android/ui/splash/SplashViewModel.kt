@@ -22,7 +22,7 @@ enum class NavigationTarget {
  * 负责自动登录检查和导航
  */
 class SplashViewModel(app: Application) : AndroidViewModel(app) {
-    private val repository = AuthRepository(app, baseUrl = "http://3.144.236.205:8080")
+    private val repository = AuthRepository(app, baseUrl = "http://10.0.2.2:8080")
     
     private val _navigationTarget = MutableStateFlow(NavigationTarget.None)
     val navigationTarget: StateFlow<NavigationTarget> = _navigationTarget
