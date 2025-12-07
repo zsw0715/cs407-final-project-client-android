@@ -7,7 +7,7 @@
 |-------------|-------------|-----------|
 | **Week 10** | Shenwei Zhang | Xiangyi Peng |
 | **Week 11** | Liye Fu | Enhui Zhao |
-| **Week 12** | Shenwei Zhang | Xiangyi Peng |
+| **Week 12** | Shenwei Zhang | Liye Fu |
 | **Week 13** | Xiangyi Peng | Enhui Zhao |
 
 ---
@@ -64,44 +64,48 @@
 ## 4. Work Summary — Week 12
 
 ### Implemented Features
-- **Chat Polish & Integration — Liye Fu**  
-  - Merged chat branch to main with conflict resolution  
-  - Polished message/thread UI; prepared resend and delivery markers  
+#### Chat Screens & Real-Time Messaging — Liye Fu
+  - Developed **Chat Screen** and **Chat Detail Screen**  
+  - Implemented **Group Chat** feature  
+  - Integrated **real-time messaging system** with backend  
+  - Polished **chat UI** for better consistency and usability  
 
-- **Map & Comment UI Iteration — Xiangyi Peng**  
-  - MapBox hooks and add-post entry points refined  
-  - Comment presentation improved for consistency with chat  
+#### Map & Comment UI Iteration — Xiangyi Peng
+  - Refined **MapBox hooks** and **Add-Post entry points**  
+  - Improved **Comment UI** for alignment with chat design  
 
-- **Profile & Map Backend Hardening — Shenwei Zhang**  
-  - Profile API validation and map statistics tuning  
-  - Defensive checks on map post lifecycle  
+#### Profile & Map Backend Hardening — Shenwei Zhang
+  - Enhanced **Profile API** validation and **Map statistics**  
+  - Added **defensive checks** to ensure map post lifecycle stability  
 
-- **Auth & Friend UX Updates — Enhui Zhao**  
-  - Login/register UX refinements and error states  
-  - Friendlist updates aligned with backend data contract  
+#### Friendlist, UI Optimization & Presentation — Enhui Zhao
+  - Implemented **Friend List** functionality  
+  - Optimized **Friend Page UI design**  
+  - Created and presented **Week 12 Project PPT**   
 
 ---
 
 ## 5. Work Summary — Week 13
 
 ### Implemented Features
-- **Map Add-New-Post Finalization — Xiangyi Peng**  
-  - Finalized add-new-post flow; locked visibility defaults  
-  - Shared flow across map branches for consistency  
+#### Map Add-New-Post Finalization — Xiangyi Peng
+  - Finalized **Add-New-Post** flow and locked visibility defaults  
+  - Unified **shared flow** across map modules for consistency  
 
-- **Backend Stability Tweaks — Shenwei Zhang**  
-  - Small modifications for checkpoints and deployment stability  
-  - Public API packaging for handoff  
+#### Backend Stability Tweaks — Shenwei Zhang
+  - Applied small modifications for **deployment stability**  
+  - Packaged **public API** for final project handoff  
 
-- **Friend Flow Finishing — Enhui Zhao**  
-  - Final friend-flow passes; integrated checkpoint-3 assets  
+#### Chat & Presentation — Liye Fu
+  - Finalized **Group Chat** implementation and **real-time messaging tests**  
+  - Created and presented **Week 13 Project PPT**  
 
-- **Development Mode & Packaging**  
-  - Checkpoint-3 development mode enabled and validated  
+#### README & Friend Page Refinement — Enhui Zhao
+  - Completed and formatted **Project README documentation**  
+  - Refined **Friend Page UI**  
+  - Adjusted **user prompt language** for improved clarity and UX  
 
 ---
-
-
 
 ## 6. Codebase Maintenance
 - Merged branch `Xiangyi_c2` → `main`
@@ -113,10 +117,22 @@
 - Merged branch `Merge_liyue_enhui` → `main`
 - Merged branch `Merge_liyue_shenwei` → `main`
 - Added and updated README on `main`
+- Merged branch `Xiangyi_c2` → `Shenwei_11/29`
+- Merged branch `Shenwei_user_profile` → `Shenwei_11/29`  
+  - All conflicts resolved by **keeping the version from `Shenwei_user_profile`**
+- Merged branch `Enhui_Friend` → `Shenwei_11/29`
+- Merged branch `Liye_IntegratedChat` → `Shenwei_11/29`
+- Merged branch `Shenwei_map_feature` → `Shenwei_11/29`
+- Merged branch `Merge_liyue_enhui` → `Shenwei_11/29`
+- Merged branch `Merge_liyue_shenwei` → `Shenwei_11/29`
+- Added and updated README on `Shenwei_11/29`
+- Merged branch `Shenwei_11/29` → `Checkpoint3_development_mode`
+- Merged branch `merge_fly_shenwei_12/03` → `Checkpoint3_development_mode`
+- Merged branch `backend_public_api` → `Checkpoint3_development_mode`
+- Merged branch `merge_enhui_shenwei` → `Checkpoint3_development_mode`
+- Merged branch `Merge_Checkpoint3` → `Checkpoint3_development_mode`
+- Merged branch `Enhui_lastchange` → `Checkpoint3_development_mode`
+- Final verification of **Checkpoint-3 development mode** and **main branch packaging**
 
 ---
 
-## 7. Next Steps (Weeks 11-13)
-- Week 11 → tighten Retrofit wiring for map/post/friend endpoints; hook add-post UI to live API; baseline smoke tests (Xiangyi)
-- Week 12 → WebSocket messaging and friend updates end-to-end; delivery receipts, reconnect handling, and chat resend queue (Liye & Shenwei)
-- Week 13 → finish profile/avatar edit flows with backend validation; ship privacy toggles; add ViewModel/unit tests for chat/map/profile (Enhui & Shenwei)
