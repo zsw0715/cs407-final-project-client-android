@@ -41,6 +41,7 @@ import com.mapbox.geojson.Point
 import java.util.UUID
 import androidx.compose.ui.platform.LocalContext
 import com.cs407.knot_client_android.ui.chat.ChatRoute
+import androidx.compose.runtime.saveable.rememberSaveable
 
 
 @Composable
@@ -70,6 +71,10 @@ fun MainScreen(
     // 展开进度（0f = 收起, 1f = 半展开, 2f = 全展开）
     var expandProgress by remember { mutableStateOf(0f) }
     val mapViewModel: MapViewModel = viewModel()
+    val mapUiState by mapViewModel.uiState.collectAsState()
+    val recentPosts = remember(mapUiState.posts) {
+        mapUiState.posts.sortedByDescending { it.createdAtMs }.take(5)
+    }
 
     // 控制 MapScreen 中 Add Sheet 的显示
     var isAddSheetVisible by remember { mutableStateOf(false) }
@@ -78,6 +83,16 @@ fun MainScreen(
     var selectedPost by remember { mutableStateOf<MapPostNearby?>(null) }
     var isPostDetailVisible by remember { mutableStateOf(false) }
     var pendingSharedPost by remember { mutableStateOf<SharedPostNavigation?>(null) }
+    var searchFocusPost by remember { mutableStateOf<MapPostNearby?>(null) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    val handleSearchQueryChange: (String) -> Unit = { value ->
+        searchQuery = value
+        if (value.isBlank()) {
+            mapViewModel.searchPostsByUsername("")
+        } else if (mapUiState.searchErrorMessage != null) {
+            mapViewModel.clearSearchError()
+        }
+    }
 
     LaunchedEffect(mainVm) {
         mainVm.sharedPostRequest.collect { request ->
@@ -139,7 +154,9 @@ fun MainScreen(
                 onSharedPostFocusHandled = {
                     pendingSharedPost = null
                     mainVm.completeSharedPostNavigation()
-                }
+                },
+                searchFocusPost = searchFocusPost,
+                onSearchFocusHandled = { searchFocusPost = null }
             )
         }
         
@@ -151,7 +168,7 @@ fun MainScreen(
             ChatRoute(
                 navController = navController,
                 appContext = LocalContext.current,
-                baseUrl = "http://10.0.2.2:8080/" // Production server
+                baseUrl = "http://10.0.101.215:8080/" // Production server
             )
         }
         
@@ -170,6 +187,22 @@ fun MainScreen(
             onExpandProgressChange = { progress ->
                 expandProgress = progress
             },
+            searchQuery = searchQuery,
+            onSearchQueryChange = handleSearchQueryChange,
+            onSearch = {
+                mapViewModel.searchPostsByUsername(searchQuery)
+            },
+            searchResults = mapUiState.searchResults,
+            isSearching = mapUiState.isSearching,
+            searchErrorMessage = mapUiState.searchErrorMessage,
+            hasSearched = mapUiState.hasSearched,
+            lastSearchQuery = mapUiState.lastSearchQuery,
+            onSearchResultClick = { post ->
+                selectedPost = post
+                isPostDetailVisible = true
+                searchFocusPost = post
+            },
+            defaultPosts = recentPosts,
             modifier = Modifier
                 .zIndex(1f) // 设置较低的 z-index
                 .align(Alignment.BottomStart)

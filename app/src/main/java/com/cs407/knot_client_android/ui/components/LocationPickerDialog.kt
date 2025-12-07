@@ -358,12 +358,6 @@ fun LocationPickerDialog(
                                     fontSize = 14.sp,
                                     color = Color(0xFF9B9B9B)
                                 )
-                                Text(
-                                    text = "${String.format("%.6f", location.latitude)}, " +
-                                            "${String.format("%.6f", location.longitude)}",
-                                    fontSize = 12.sp,
-                                    color = Color(0xFF9B9B9B)
-                                )
                             }
                         }
                     }

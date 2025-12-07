@@ -527,7 +527,7 @@ fun ProfileEditScreen(
                         shape = RoundedCornerShape(32.dp),
                         modifier = Modifier.padding(horizontal = 16.dp)
                     ) {
-                        listOf("MALE", "FEMALE").forEach { option ->
+                        listOf("MALE", "FEMALE", "NON_BINARY").forEach { option ->
                             DropdownMenuItem(
                                 text = { Text(option) },
                                 onClick = {
@@ -787,5 +787,4 @@ private fun EditFieldSwitch(
 fun ProfileEditScreenPreview() {
     ProfileEditScreen(navController = rememberNavController())
 }
-
 

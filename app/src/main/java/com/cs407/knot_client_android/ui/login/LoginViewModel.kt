@@ -10,7 +10,7 @@ import kotlinx.coroutines.launch
 
 class LoginViewModel(app: Application) : AndroidViewModel(app) {
     // Production server address
-    private val repo = AuthRepository(app, baseUrl = "http://10.0.2.2:8080")
+    private val repo = AuthRepository(app, baseUrl = "http://10.0.101.215:8080")
 
     val loading = MutableStateFlow(false)
     val error = MutableStateFlow<String?>(null)

@@ -120,7 +120,9 @@ fun MapScreen(
     onPostSelected: (MapPostNearby) -> Unit = {},
     onUserLocationChanged: (Point?) -> Unit = {},
     sharedPostFocus: SharedPostNavigation? = null,
-    onSharedPostFocusHandled: () -> Unit = {}
+    onSharedPostFocusHandled: () -> Unit = {},
+    searchFocusPost: MapPostNearby? = null,
+    onSearchFocusHandled: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val locationManager = remember { LocationManager(context) }
@@ -135,7 +137,7 @@ fun MapScreen(
 
     // API Repository
     val mapPostRepository = remember {
-        MapPostRepository(context, "http://10.0.2.2:8080")
+        MapPostRepository(context, "http://10.0.101.215:8080")
     }
 
     // ⚡ 静态标志：地图直接显示，无动画
@@ -619,6 +621,23 @@ fun MapScreen(
             }
         )
         onSharedPostFocusHandled()
+    }
+
+    LaunchedEffect(searchFocusPost?.mapPostId) {
+        val focusPost = searchFocusPost ?: return@LaunchedEffect
+        val point = Point.fromLngLat(focusPost.locLng, focusPost.locLat)
+        mapViewportState.easeTo(
+            cameraOptions = CameraOptions.Builder()
+                .center(point)
+                .zoom(16.0)
+                .bearing(0.0)
+                .pitch(0.0)
+                .build(),
+            animationOptions = MapAnimationOptions.mapAnimationOptions {
+                duration(900)
+            }
+        )
+        onSearchFocusHandled()
     }
     
     // 监听地图中心和缩放变化，获取中心点地名 + 保存位置 + 加载附近帖子

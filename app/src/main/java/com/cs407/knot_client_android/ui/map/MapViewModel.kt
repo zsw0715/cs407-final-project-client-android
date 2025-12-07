@@ -13,7 +13,12 @@ import kotlinx.coroutines.launch
 data class MapUiState(
     val posts: List<MapPostNearby> = emptyList(),
     val isLoading: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val searchResults: List<MapPostNearby> = emptyList(),
+    val isSearching: Boolean = false,
+    val searchErrorMessage: String? = null,
+    val lastSearchQuery: String = "",
+    val hasSearched: Boolean = false
 )
 
 class MapViewModel : ViewModel() {
@@ -35,7 +40,7 @@ class MapViewModel : ViewModel() {
         if (repository != null) return
         repository = MapPostRepository(
             context = context,
-            baseUrl = "http://10.0.2.2:8080"
+            baseUrl = "http://10.0.101.215:8080"
         )
     }
 
@@ -129,5 +134,62 @@ class MapViewModel : ViewModel() {
 
     fun clearError() {
         _uiState.update { it.copy(errorMessage = null) }
+    }
+
+    /**
+     * 根据用户名搜索帖子，结果用于底部搜索弹窗
+     */
+    fun searchPostsByUsername(username: String) {
+        val repo = repository ?: return
+        val query = username.trim()
+        if (query.isEmpty()) {
+            _uiState.update {
+                it.copy(
+                    searchResults = emptyList(),
+                    searchErrorMessage = null,
+                    isSearching = false,
+                    lastSearchQuery = "",
+                    hasSearched = false
+                )
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isSearching = true,
+                    searchErrorMessage = null,
+                    lastSearchQuery = query,
+                    hasSearched = true
+                )
+            }
+            try {
+                val results = repo.getPostsByUsername(query)
+                _uiState.update {
+                    it.copy(
+                        searchResults = results,
+                        isSearching = false,
+                        searchErrorMessage = null,
+                        lastSearchQuery = query,
+                        hasSearched = true
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        searchResults = emptyList(),
+                        isSearching = false,
+                        searchErrorMessage = e.message ?: "搜索失败",
+                        lastSearchQuery = query,
+                        hasSearched = true
+                    )
+                }
+            }
+        }
+    }
+
+    fun clearSearchError() {
+        _uiState.update { it.copy(searchErrorMessage = null) }
     }
 }

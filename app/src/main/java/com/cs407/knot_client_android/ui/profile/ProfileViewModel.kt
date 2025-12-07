@@ -14,7 +14,7 @@ import com.cs407.knot_client_android.data.model.request.UpdateUserSettingsReques
  * Profile 页面 ViewModel
  */
 class ProfileViewModel(app: Application) : AndroidViewModel(app) {
-    private val repository = UserRepository(app, baseUrl = "http://10.0.2.2:8080")
+    private val repository = UserRepository(app, baseUrl = "http://10.0.101.215:8080")
 
     // 加载状态
     private val _loading = MutableStateFlow(false)

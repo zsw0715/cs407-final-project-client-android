@@ -129,7 +129,7 @@ fun ChatDetailScreen(
                                 var convType = 1
                                 if (token != null) {
                                     try {
-                                        val convApi = com.cs407.knot_client_android.data.api.RetrofitProvider.createConversationService("http://10.0.2.2:8080/")
+                                        val convApi = com.cs407.knot_client_android.data.api.RetrofitProvider.createConversationService("http://10.0.101.215:8080/")
                                         val resp = convApi.getConversationList("Bearer $token")
                                         val list = resp.data ?: emptyList()
                                         val found = list.firstOrNull { it.convId == state.convId }
@@ -171,7 +171,7 @@ fun ChatDetailScreen(
         var otherAvatarUrl by remember { mutableStateOf<String?>(null) }
 
         LaunchedEffect(Unit) {
-            val repo = UserRepository(context.applicationContext, baseUrl = "http://10.0.2.2:8080")
+            val repo = UserRepository(context.applicationContext, baseUrl = "http://10.0.101.215:8080")
             try {
                 // 自己的头像
                 val settings = repo.getUserSettings()
@@ -198,7 +198,7 @@ fun ChatDetailScreen(
 
         // 照片选择 & 上传：从系统相册选图 -> 上传到 S3 -> 发送图片消息
         val imageUploadRepository = remember {
-            UserRepository(context.applicationContext, baseUrl = "http://10.0.2.2:8080")
+            UserRepository(context.applicationContext, baseUrl = "http://10.0.101.215:8080")
         }
         val photoPickerLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.GetContent()

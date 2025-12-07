@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Place
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,7 +42,8 @@ enum class NavTab {
 fun BottomNavigationBar(
     selectedTab: NavTab,
     onTabSelected: (NavTab) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onMapSearchShortcut: () -> Unit = {}
 ) {
     Box(
         modifier = modifier
@@ -127,10 +129,21 @@ fun BottomNavigationBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Map 按钮
+                val mapIcon = if (selectedTab == NavTab.MAP) {
+                    Icons.Outlined.Search
+                } else {
+                    Icons.Outlined.Place
+                }
                 IconButton(
-                    icon = Icons.Outlined.Place,
+                    icon = mapIcon,
                     isSelected = selectedTab == NavTab.MAP,
-                    onClick = { onTabSelected(NavTab.MAP) },
+                    onClick = {
+                        if (selectedTab == NavTab.MAP) {
+                            onMapSearchShortcut()
+                        } else {
+                            onTabSelected(NavTab.MAP)
+                        }
+                    },
                     modifier = Modifier.weight(1f)
                 )
                 
@@ -238,4 +251,3 @@ private fun ProfileButton(
         }
     }
 }
-

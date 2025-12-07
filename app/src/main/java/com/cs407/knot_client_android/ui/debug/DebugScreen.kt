@@ -33,7 +33,7 @@ fun DebugScreen(
     val isConnected by wsManager.connectionState.collectAsState()
     val messages by wsManager.messages.collectAsState()
     
-    var wsUrl by remember { mutableStateOf("ws://10.0.2.2:10827/ws") }
+    var wsUrl by remember { mutableStateOf("ws://10.0.101.215:10827/ws") }
     var messageInput by remember { mutableStateOf("") }
     
     val listState = rememberLazyListState()

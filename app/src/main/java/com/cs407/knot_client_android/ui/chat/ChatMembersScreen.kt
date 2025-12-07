@@ -63,7 +63,7 @@ fun ChatMembersRoute(
     convId: Long,
     title: String,
     convType: Int = 1,
-    baseUrl: String = "http://10.0.2.2:8080/"
+    baseUrl: String = "http://10.0.101.215:8080/"
 ) {
     val context = LocalContext.current
     val tokenStore = remember { TokenStore(context) }

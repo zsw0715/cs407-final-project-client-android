@@ -121,10 +121,10 @@ fun AddPlaceSheet(
     val context = LocalContext.current
     val tokenStore = remember { com.cs407.knot_client_android.data.local.TokenStore(context) }
     val friendApiService = remember {
-        com.cs407.knot_client_android.data.api.RetrofitProvider.createFriendService("http://10.0.2.2:8080")
+        com.cs407.knot_client_android.data.api.RetrofitProvider.createFriendService("http://10.0.101.215:8080")
     }
     val userRepository = remember {
-        UserRepository(context.applicationContext, baseUrl = "http://10.0.2.2:8080")
+        UserRepository(context.applicationContext, baseUrl = "http://10.0.101.215:8080")
     }
 
     // 朋友列表状态

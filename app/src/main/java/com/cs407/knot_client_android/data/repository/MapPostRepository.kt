@@ -8,6 +8,7 @@ import com.cs407.knot_client_android.data.model.MapPost
 import com.cs407.knot_client_android.data.model.request.NearbyRequest
 import com.cs407.knot_client_android.data.model.request.NearbyRequestV2
 import com.cs407.knot_client_android.data.model.response.MapPostNearby
+import retrofit2.HttpException
 
 
 /**
@@ -114,5 +115,29 @@ class MapPostRepository(context: Context, baseUrl: String) {
             error(response.error ?: response.message ?: "删除帖子失败")
         }
     }
-}
 
+    /**
+     * 根据用户名获取该用户的所有地图帖子
+     */
+    suspend fun getPostsByUsername(username: String): List<MapPostNearby> {
+        val token = tokenStore.getAccessToken()
+        if (token.isNullOrBlank()) {
+            error("未登录，无法搜索帖子")
+        }
+
+        return try {
+            val response = apiService.getPostsByUsername("Bearer $token", username)
+            if (response.success && response.data != null) {
+                response.data
+            } else {
+                error(response.error ?: response.message ?: "搜索帖子失败")
+            }
+        } catch (e: HttpException) {
+            if (e.code() in listOf(400, 404)) {
+                error("用户不存在或无权限查看")
+            } else {
+                error("搜索帖子失败：${e.message()}")
+            }
+        }
+    }
+}

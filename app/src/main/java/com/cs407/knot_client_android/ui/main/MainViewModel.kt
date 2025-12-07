@@ -26,7 +26,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             val jwt = tokenStore.get()
             if (jwt != null) {
                 // Production server
-                wsManager.connect("ws://10.0.2.2:10827/ws", jwt)
+                wsManager.connect("ws://10.0.101.215:10827/ws", jwt)
             }
         }
     }

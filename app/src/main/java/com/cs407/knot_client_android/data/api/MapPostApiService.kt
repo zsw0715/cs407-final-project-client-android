@@ -67,5 +67,13 @@ interface MapPostApiService {
         @Header("Authorization") token: String,
         @Path("mapPostId") mapPostId: Long
     ): ApiResponse<Unit>
-}
 
+    /**
+     * 根据用户名搜索该用户的所有帖子
+     */
+    @GET("/api/mapPost/user/{username}")
+    suspend fun getPostsByUsername(
+        @Header("Authorization") token: String,
+        @Path("username") username: String
+    ): ApiResponse<List<MapPostNearby>>
+}
