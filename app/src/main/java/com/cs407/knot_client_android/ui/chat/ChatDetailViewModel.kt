@@ -192,7 +192,7 @@ class ChatDetailViewModel(
     }
 
 
-    fun loadHistory(page: Int = 1, size: Int = 20) {
+    fun loadHistory(page: Int = 1, size: Int = 1000) {
         viewModelScope.launch {
             _ui.value = _ui.value.copy(loading = true, error = null)
             try {

@@ -16,6 +16,7 @@ import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import com.cs407.knot_client_android.data.local.TokenStore
 import com.cs407.knot_client_android.ui.chat.ChatDetailRoute
+import com.cs407.knot_client_android.ui.chat.ChatMembersRoute
 import com.cs407.knot_client_android.ui.debug.DebugScreen
 import com.cs407.knot_client_android.ui.friend.FriendScreen
 import com.cs407.knot_client_android.ui.login.LoginScreen
@@ -47,6 +48,12 @@ sealed class Screen(val route: String) {
             // title 里可能有空格/中文，要编码一下
             val encoded = Uri.encode(title)
             return "chat/$convId/$encoded"
+        }
+    }
+    object ChatMembers : Screen("chat/{convId}/{title}/{convType}/members") {
+        fun createRoute(convId: Long, title: String, convType: Int): String {
+            val encoded = Uri.encode(title)
+            return "chat/$convId/$encoded/$convType/members"
         }
     }
 }
@@ -151,6 +158,25 @@ fun SetupNavGraph(
                 title = title,
                 myUid = myUid,
                 mainVm = mainVm
+            )
+        }
+        composable(
+            route = Screen.ChatMembers.route,
+            arguments = listOf(
+                navArgument("convId") { type = NavType.LongType },
+                navArgument("title") { type = NavType.StringType },
+                navArgument("convType") { type = NavType.IntType }
+            )
+        ) { backStackEntry ->
+            val convId = backStackEntry.arguments?.getLong("convId")!!
+            val title = backStackEntry.arguments?.getString("title") ?: "Members"
+            val convType = backStackEntry.arguments?.getInt("convType") ?: 1
+
+            ChatMembersRoute(
+                navController = navController,
+                convId = convId,
+                title = title,
+                convType = convType
             )
         }
     }

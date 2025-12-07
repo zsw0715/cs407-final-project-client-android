@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -95,32 +96,13 @@ fun ChatDetailScreen(
                 )
             )
     ) {
+        // 上下文 & 协程作用域：用于后续获取头像、上传等操作
+        val context = LocalContext.current
+        val coroutineScope = rememberCoroutineScope()
         CenterAlignedTopAppBar(
             title = {
-                // 标题左侧增加头像：如果未来有 avatarUrl 可以替换为网络图片；
-                // 目前用用户名首字母作为占位，样式参考 ChatScreen 的会话头像
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    val initial = state.title.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFFE5E7EB)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = initial,
-                            fontSize = 18.sp,
-                            color = Color(0xFF6B7280)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Text(text = state.title, fontSize = 20.sp)
-                }
+                // 只显示名字，不显示头像
+                Text(text = state.title, fontSize = 20.sp)
             },
             navigationIcon = {
                 TopBarFloatingIconButton(
@@ -136,9 +118,33 @@ fun ChatDetailScreen(
             },
             actions = {
                 TopBarFloatingIconButton(
-                    icon = Icons.Filled.Edit,
-                    contentDescription = "Edit",
-                    onClick = onEditClick,
+                    icon = Icons.Filled.MoreVert,
+                    contentDescription = "More",
+                    onClick = {
+                        // 在跳转前调用 ConversationApi 获取 convType（更可靠地判断是否为单聊）
+                        // Use the composable-scoped `context` and `coroutineScope` captured above instead of calling LocalContext.current here.
+                        coroutineScope.launch {
+                            try {
+                                val token = com.cs407.knot_client_android.data.local.TokenStore(context).getAccessToken()
+                                var convType = 1
+                                if (token != null) {
+                                    try {
+                                        val convApi = com.cs407.knot_client_android.data.api.RetrofitProvider.createConversationService("http://10.0.2.2:8080/")
+                                        val resp = convApi.getConversationList("Bearer $token")
+                                        val list = resp.data ?: emptyList()
+                                        val found = list.firstOrNull { it.convId == state.convId }
+                                        if (found != null) convType = found.convType
+                                    } catch (_: Exception) {
+                                        // ignore and fallback to default convType = 1
+                                    }
+                                }
+                                navController.navigate(com.cs407.knot_client_android.navigation.Screen.ChatMembers.createRoute(state.convId, state.title, convType))
+                            } catch (_: Exception) {
+                                // fallback navigation
+                                navController.navigate(com.cs407.knot_client_android.navigation.Screen.ChatMembers.createRoute(state.convId, state.title, 1))
+                            }
+                        }
+                    },
                     modifier = Modifier.padding(end = 12.dp)
                 )
             },
@@ -153,8 +159,6 @@ fun ChatDetailScreen(
         val listState = rememberLazyListState()
 
         // 当前用户昵称（用于右侧消息头像），优先从 TokenStore 取；拿不到就用 "Me"
-        val context = LocalContext.current
-        val coroutineScope = rememberCoroutineScope()
         val selfName = remember {
             com.cs407.knot_client_android.data.local.TokenStore(context).getUsername()
                 ?: "Me"

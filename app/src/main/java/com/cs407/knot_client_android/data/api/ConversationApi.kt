@@ -20,4 +20,22 @@ interface ConversationApi {
         // 后端是 "6,8" 格式，使用 String
         @Query("memberIds") memberIds: String
     ): CreateGroupResp
+
+    @GET("/api/conversation/members")
+    suspend fun getConversationMembers(
+        @Header("Authorization") authorization: String,
+        @Query("conversationId") conversationId: String
+    ): com.cs407.knot_client_android.data.model.response.ConversationMembersResp
+
+    @POST("/api/conversation/joinGroup")
+    suspend fun joinGroup(
+        @Header("Authorization") authorization: String,
+        @retrofit2.http.Body body: com.cs407.knot_client_android.data.model.request.ConversationActionReq
+    ): com.cs407.knot_client_android.data.model.response.ConversationActionResp
+
+    @POST("/api/conversation/leaveGroup")
+    suspend fun leaveGroup(
+        @Header("Authorization") authorization: String,
+        @retrofit2.http.Body body: com.cs407.knot_client_android.data.model.request.ConversationActionReq
+    ): com.cs407.knot_client_android.data.model.response.ConversationActionResp
 }
