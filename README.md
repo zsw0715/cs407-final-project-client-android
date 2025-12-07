@@ -65,23 +65,27 @@
 
 ### Implemented Features
 #### Chat Screens & Real-Time Messaging — Liye Fu
-  - Developed **Chat Screen** and **Chat Detail Screen**  
-  - Implemented **Group Chat** feature  
-  - Integrated **real-time messaging system** with backend  
-  - Polished **chat UI** for better consistency and usability  
+- Developed **Chat Screen** and **Chat Detail Screen**  
+- Implemented **Group Chat** feature  
+- Integrated **real-time messaging system** with backend  
+- Polished **chat UI** for better consistency and usability  
 
 #### Map & Comment UI Iteration — Xiangyi Peng
-  - Refined **MapBox hooks** and **Add-Post entry points**  
-  - Improved **Comment UI** for alignment with chat design  
+- Refined **MapBox hooks** and **Add-Post entry points**  
+- Improved **Comment UI** for alignment with chat design  
+- Built initial **Post Share (frontend)** entry points on map posts  
 
 #### Profile & Map Backend Hardening — Shenwei Zhang
-  - Enhanced **Profile API** validation and **Map statistics**  
-  - Added **defensive checks** to ensure map post lifecycle stability  
+- Enhanced **Profile API** validation and **Map statistics**  
+- Added **defensive checks** to ensure map post lifecycle stability  
+- Established **image hosting for deployment** and prepared **backend cloud deployment** baseline  
+- Assisted with **merge operations** across feature branches  
 
 #### Friendlist, UI Optimization & Presentation — Enhui Zhao
-  - Implemented **Friend List** functionality  
-  - Optimized **Friend Page UI design**  
-  - Created and presented **Week 12 Project PPT**   
+- Implemented **Friend List** functionality  
+- Optimized **Friend Page UI design**  
+- Created and presented **Week 12 Project PPT**  
+- Designed and finalized **project poster**  
 
 ---
 
@@ -89,21 +93,27 @@
 
 ### Implemented Features
 #### Map Add-New-Post Finalization — Xiangyi Peng
-  - Finalized **Add-New-Post** flow and locked visibility defaults  
-  - Unified **shared flow** across map modules for consistency  
+- Finalized **Add-New-Post** flow and locked visibility defaults  
+- Unified **shared flow** across map modules for consistency  
+- Completed **Post Share (frontend)** polish and integration  
+- Implemented **Like (backend)** functionality for map posts  
 
 #### Backend Stability Tweaks — Shenwei Zhang
-  - Applied small modifications for **deployment stability**  
-  - Packaged **public API** for final project handoff  
+- Performed backend updates for **deployment stability** and completed **cloud deployment**  
+- Implemented **Like (frontend)** interactions and sync logic  
+- Added **Join/Leave Group (backend)** functionality for group chat membership management  
+- Oversaw **merge work** and Checkpoint 3 stabilization  
 
 #### Chat & Presentation — Liye Fu
-  - Finalized **Group Chat** implementation and **real-time messaging tests**  
-  - Created and presented **Week 13 Project PPT**  
+- Finalized **Group Chat** implementation and **real-time messaging tests**  
+- Developed **Chat Member Screen** to display detailed information of all group members  
+- Created and presented **Week 13 Project PPT**  
 
-#### README & Friend Page Refinement — Enhui Zhao
-  - Completed and formatted **Project README documentation**  
-  - Refined **Friend Page UI**  
-  - Adjusted **user prompt language** for improved clarity and UX  
+#### README, Friend Page & Poster — Enhui Zhao
+- Completed and formatted **Project README documentation**  
+- Refined **Friend Page UI** and optimized visual design  
+- Adjusted **user prompt language** for clarity and tone consistency  
+- Finish **poster** 
 
 ---
 
