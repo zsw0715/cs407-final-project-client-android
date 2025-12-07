@@ -469,7 +469,7 @@ fun MapScreen(
                                 mapViewModel.addOrUpdatePost(newPost)
 
                                 // 显示提示
-                                snackbarHostState.showSnackbar("🎉 ${mapPostNew.creatorUsername} 发布了新帖子！")
+                                snackbarHostState.showSnackbar("🎉 ${mapPostNew.creatorUsername} just posted something nearby!")
                             }
                         }
 
