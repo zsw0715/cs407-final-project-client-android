@@ -85,7 +85,6 @@
 - Implemented **Friend List** functionality  
 - Optimized **Friend Page UI design**  
 - Created and presented **Week 12 Project PPT**  
-- Designed and finalized **project poster**  
 
 ---
 
