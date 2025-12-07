@@ -114,10 +114,10 @@ fun ChatScreen(
                     )
                 }
             } else {
-                // TODO: 可以在这里做一些错误提示（比如用 Snackbar）
+                // 错误提示（比如用 Snackbar）
             }
         } catch (e: Exception) {
-            // TODO: 网络异常时的处理
+            // 网络异常时的处理
         }
     }
 
@@ -179,89 +179,6 @@ fun ChatScreen(
                 }
             }
         }
-//        if (showCreateDialog) {
-//            CreateGroupDialog(
-//                friendsRaw = friendList,   // 把从后端拿到的好友列表塞进去
-//                onDismiss = { showCreateDialog = false },
-//                onConfirm = { groupName, memberIds ->
-//                    scope.launch {
-//                        try {
-//                            val token = tokenStore.getAccessToken()
-//                            if (token.isNullOrBlank()) {
-//                                showCreateDialog = false
-//                                return@launch
-//                            }
-//
-//                            val authHeader = "Bearer $token"
-//                            val memberIdStr = memberIds.joinToString(",")
-//
-//                            // 这里调用你已经写好的 createGroupConversation
-//                            val resp = conversationApi.createGroupConversation(
-//                                authorization = authHeader,
-//                                groupName = groupName,
-//                                memberIds = memberIdStr
-//                            )
-//
-//                            if (resp.success && resp.data != null) {
-//                                showCreateDialog = false
-//                                navController.navigate(
-//                                    Screen.ChatDetail.createRoute(
-//                                        convId = resp.data.id,
-//                                        title = groupName
-//                                    )
-//                                )
-//                            } else {
-//                                // TODO: 失败提示
-//                            }
-//                        } catch (e: Exception) {
-//                            // TODO: 网络错误提示
-//                        }
-//                    }
-//                }
-//            )
-//        }
-
-//        if (showCreateDialog) {
-//            CreateGroupDialog(
-//                onDismiss = { showCreateDialog = false },
-//                onConfirm = { groupName, memberIds ->
-//                    scope.launch {
-//                        try {
-//                            val token = tokenStore.getAccessToken()
-//                            if (token.isNullOrBlank()) {
-//                                // 简单处理：没有 token 直接关闭，对实际项目可以 Toast 提示
-//                                showCreateDialog = false
-//                                return@launch
-//                            }
-//
-//                            val authHeader = "Bearer $token"
-//                            val memberIdStr = memberIds.joinToString(",")
-//
-//                            val resp = conversationApi.createGroupConversation(
-//                                authorization = authHeader,
-//                                groupName = groupName,
-//                                memberIds = memberIdStr
-//                            )
-//
-//                            if (resp.success && resp.data != null) {
-//                                showCreateDialog = false
-//                                // 直接跳转到新群聊的 ChatDetail
-//                                navController.navigate(
-//                                    Screen.ChatDetail.createRoute(
-//                                        convId = resp.data.id,
-//                                        title = groupName
-//                                    )
-//                                )
-//                            } else {
-//                                // 可以在这里加 Toast / Snackbar 提示错误
-//                            }
-//                        } catch (e: Exception) {
-//                            // 网络错误，视情况提示
-//                        }
-//                    }
-//                }
-//            )
-//        }
     }
     if (showCreateDialog) {
         CreateGroupDialog(
@@ -319,7 +236,7 @@ private fun TransparentHeaderBar(
     ) {
         var menuExpanded by remember { mutableStateOf(false) }
 
-        // 按钮动画状态（沿用你原来的）
+        // 按钮动画状态
         val interactionSource = remember { MutableInteractionSource() }
         val isPressed by interactionSource.collectIsPressedAsState()
         val scale = remember { Animatable(1f) }
@@ -359,7 +276,7 @@ private fun TransparentHeaderBar(
                     .background(Color.White.copy(alpha = 0.65f))
             )
 
-            // 主按钮：图标改成 +
+            // 主按钮
             Box(
                 modifier = Modifier
                     .size(46.dp)
@@ -382,7 +299,6 @@ private fun TransparentHeaderBar(
             }
         }
 
-        // 现在菜单里只有“Add group conversation”
         DropdownMenu(
             expanded = menuExpanded,
             onDismissRequest = { menuExpanded = false },

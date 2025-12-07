@@ -78,7 +78,7 @@ class ChatDetailViewModel(
             senderAvatarUrl = null,
             isMine = true,
             time = LocalDateTime.now(),
-            sending = true                     // 标记正在发送（可选）
+            sending = true                     // 标记正在发送
         )
 
         _ui.update { state ->
@@ -183,7 +183,7 @@ class ChatDetailViewModel(
                 if (m.clientMsgId == clientMsgId)
                     m.copy(
                         msgId = msgId,
-                        sending = false   // ⭐ 去掉发送中状态
+                        sending = false
                     )
                 else m
             }
@@ -192,7 +192,7 @@ class ChatDetailViewModel(
     }
 
 
-    fun loadHistory(page: Int = 1, size: Int = 20) {
+    fun loadHistory(page: Int = 1, size: Int = 1000) {
         viewModelScope.launch {
             _ui.value = _ui.value.copy(loading = true, error = null)
             try {
@@ -251,7 +251,7 @@ private fun MessageDto.toUi(myUid: Long): MessageUi {
     return MessageUi(
         msgId = msgId,
         clientMsgId = clientMsgId,
-        fromUid = senderId,              // ✅ 用 senderId
+        fromUid = senderId,
         convId = convId,
         contentText = contentText,
         msgType = msgType,
@@ -260,7 +260,7 @@ private fun MessageDto.toUi(myUid: Long): MessageUi {
         mediaMetaJson = mediaMetaJson,
         senderNickname = senderNickname,
         senderAvatarUrl = senderAvatarUrl,
-        isMine = senderId == myUid,      // ✅ 判断是不是自己
+        isMine = senderId == myUid,
         time = time
     )
 }

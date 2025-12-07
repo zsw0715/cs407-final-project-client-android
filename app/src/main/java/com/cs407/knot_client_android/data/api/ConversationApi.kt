@@ -17,7 +17,6 @@ interface ConversationApi {
     suspend fun createGroupConversation(
         @Header("Authorization") authorization: String,
         @Query("groupName") groupName: String,
-        // 后端是 "6,8" 格式，使用 String
         @Query("memberIds") memberIds: String
     ): CreateGroupResp
 }
