@@ -70,6 +70,7 @@ import android.graphics.RenderEffect
 import android.graphics.Shader
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalConfiguration
 import kotlinx.coroutines.launch
 import coil.compose.rememberAsyncImagePainter
 
@@ -84,6 +85,9 @@ fun ProfileScreen(
     val context = androidx.compose.ui.platform.LocalContext.current
     val tokenStore = remember { com.cs407.knot_client_android.data.local.TokenStore(context) }
     val scope = rememberCoroutineScope()
+    val configuration = LocalConfiguration.current
+    val shortestSide = kotlin.math.min(configuration.screenHeightDp, configuration.screenWidthDp)
+    val isCompactScreen = shortestSide <= 600
     
     // 收集用户设置数据
     val userSettings by profileVm.userSettings.collectAsState()
@@ -342,9 +346,10 @@ fun ProfileScreen(
 
             Spacer(modifier = Modifier.height(25.dp))
             
+            val avatarSize = if (isCompactScreen) 140.dp else 180.dp
             Box(
                 modifier = Modifier
-                    .size(180.dp)
+                    .size(avatarSize)
                     .clip(CircleShape)
                     .border(width = 2.dp, color = Color.White.copy(alpha = 0.15f), shape = CircleShape)
                     .padding(8.dp)
@@ -358,7 +363,7 @@ fun ProfileScreen(
                         painter = rememberAsyncImagePainter(model = avatarUrl),
                         contentDescription = "Profile",
                         modifier = Modifier
-                            .size(180.dp)
+                            .size(avatarSize)
                             .clip(CircleShape),
                         contentScale = ContentScale.Crop
                     )
@@ -370,7 +375,7 @@ fun ProfileScreen(
                         ?.toString() ?: "U"
                     Box(
                         modifier = Modifier
-                            .size(180.dp)
+                            .size(avatarSize)
                             .clip(CircleShape)
                             .background(Color(0xFFE5E7EB)),
                         contentAlignment = Alignment.Center
@@ -419,42 +424,48 @@ fun ProfileScreen(
                     UserInfoItem(
                         icon = Icons.Default.Person,
                         label = "Nickname",
-                        value = userSettings?.nickname ?: "N/A"
+                        value = userSettings?.nickname ?: "N/A",
+                        compact = isCompactScreen
                     )
                     
                     // Email
                     UserInfoItem(
                         icon = Icons.Default.Email,
                         label = "Email",
-                        value = userSettings?.email ?: "N/A"
+                        value = userSettings?.email ?: "N/A",
+                        compact = isCompactScreen
                     )
                     
                     // Gender
                     UserInfoItem(
                         icon = Icons.Default.Face,
                         label = "Gender",
-                        value = userSettings?.gender ?: "N/A"
+                        value = userSettings?.gender ?: "N/A",
+                        compact = isCompactScreen
                     )
                     
                     // Birthday
                     UserInfoItem(
                         icon = Icons.Default.DateRange,
                         label = "Birthday",
-                        value = userSettings?.birthdate ?: "N/A"
+                        value = userSettings?.birthdate ?: "N/A",
+                        compact = isCompactScreen
                     )
                     
                     // Privacy Level
                     UserInfoItem(
                         icon = Icons.Default.Lock,
                         label = "Privacy",
-                        value = userSettings?.privacyLevel ?: "N/A"
+                        value = userSettings?.privacyLevel ?: "N/A",
+                        compact = isCompactScreen
                     )
                     
                     // Discoverable
                     UserInfoItem(
                         icon = Icons.Default.LocationOn,
                         label = "Discoverable",
-                        value = if (userSettings?.discoverable == true) "TRUE" else "FALSE"
+                        value = if (userSettings?.discoverable == true) "TRUE" else "FALSE",
+                        compact = isCompactScreen
                     )
                 }
             
@@ -483,12 +494,16 @@ fun ProfileScreen(
 private fun UserInfoItem(
     icon: ImageVector,
     label: String,
-    value: String
+    value: String,
+    compact: Boolean = false
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(
+                horizontal = 16.dp,
+                vertical = if (compact) 8.dp else 12.dp
+            ),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // 图标
@@ -496,7 +511,7 @@ private fun UserInfoItem(
             imageVector = icon,
             contentDescription = null,
             tint = Color(0xFF8E8E93), // 可见的灰色
-            modifier = Modifier.size(28.dp) // 增大图标
+            modifier = Modifier.size(if (compact) 22.dp else 28.dp) // 增大图标
         )
         
         Spacer(modifier = Modifier.width(16.dp))
@@ -504,7 +519,7 @@ private fun UserInfoItem(
         // 标签
         Text(
             text = label,
-            fontSize = 18.sp, // 增大字体
+            fontSize = if (compact) 16.sp else 18.sp, // 增大字体
             fontWeight = FontWeight.Medium,
             color = Color(0xFF505058), // 可见的深灰色
             modifier = Modifier.weight(1f)
@@ -513,7 +528,7 @@ private fun UserInfoItem(
         // 值
         Text(
             text = value,
-            fontSize = 16.sp, // 增大字体
+            fontSize = if (compact) 14.sp else 16.sp, // 增大字体
             fontWeight = FontWeight.Normal,
             color = Color(0xFF7B7D86) // 可见的灰色
         )
@@ -525,4 +540,3 @@ private fun UserInfoItem(
 fun ProfileScreenPreview() {
     ProfileScreen(navController = rememberNavController())
 }
-

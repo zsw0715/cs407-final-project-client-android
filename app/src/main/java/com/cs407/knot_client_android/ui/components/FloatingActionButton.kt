@@ -24,7 +24,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
+import kotlin.math.min
 
 @Composable
 fun FloatingActionButton(
@@ -36,6 +38,12 @@ fun FloatingActionButton(
 ) {
     // 如果没有图标，不显示按钮
     if (icon == null) return
+    
+    val configuration = LocalConfiguration.current
+    val shortestSide = min(configuration.screenHeightDp, configuration.screenWidthDp)
+    val sizeScale = if (shortestSide <= 600) 0.85f else 1f
+    val scaledContainer = containerSize * sizeScale
+    val scaledIcon = iconSize * sizeScale
     
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -79,7 +87,7 @@ fun FloatingActionButton(
         // 毛玻璃背景层 - Android 原生系统级模糊
         Box(
             modifier = Modifier
-                .size(containerSize)
+                .size(scaledContainer)
                 .clip(CircleShape)
                 .graphicsLayer {
                     renderEffect = RenderEffect
@@ -92,7 +100,7 @@ fun FloatingActionButton(
         // 主按钮
         Box(
             modifier = Modifier
-                .size(containerSize)
+                .size(scaledContainer)
                 .scale(scale.value)
                 .border(
                     width = 1.dp,
@@ -118,7 +126,7 @@ fun FloatingActionButton(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                modifier = Modifier.size(iconSize),
+                modifier = Modifier.size(scaledIcon),
                 tint = if (isPressed) 
                     Color(0xFF636EF1) // 按下时：蓝紫色，与 BottomNavigationBar 选中颜色一致
                 else 
@@ -127,4 +135,3 @@ fun FloatingActionButton(
         }
     }
 }
-
