@@ -43,17 +43,17 @@ For detailed project information, please refer to our [Project Proposal](./CS407
    ```
 
 4. **Verify everything is working**
-   - Spring Boot Application: http://localhost:8080
-   - API Documentation: http://localhost:8080/swagger-ui.html
-   - GUI API Testing: http://localhost:8080/client/debug.html
-   - Netty WebSocket Server: ws://localhost:10827/ws
+   - Spring Boot Application: http://3.144.236.205:8080
+   - API Documentation: http://3.144.236.205:8080/swagger-ui.html
+   - GUI API Testing: http://3.144.236.205:8080/client/debug.html
+   - Netty WebSocket Server: ws://3.144.236.205:10827/ws
 
 ---
 
 ## Service Ports
 
-- **Spring Boot Application**: http://localhost:8080  
-- **Netty WebSocket**: ws://localhost:10827/ws  
+- **Spring Boot Application**: http://3.144.236.205:8080  
+- **Netty WebSocket**: ws://3.144.236.205:10827/ws  
 - **MySQL Database**: localhost:3306  
 - **Redis Cache**: localhost:6379  
 
@@ -77,7 +77,7 @@ You can connect using any MySQL client:
 
 ## WebSocket Testing 
 
-We use **JWT access token (AT)** obtained from the login API to authenticate WebSocket connections. You can test temporarily through the http://localhost:8080/client/debug.html page.
+We use **JWT access token (AT)** obtained from the login API to authenticate WebSocket connections. You can test temporarily through the http://3.144.236.205:8080/client/debug.html page.
 
 ### Preparation
 
@@ -88,7 +88,7 @@ We use **JWT access token (AT)** obtained from the login API to authenticate Web
 
 2. **Login via REST API** to get the **access token (AT)**:
    ```bash
-   curl -X POST http://localhost:8080/api/auth/login \
+   curl -X POST http://3.144.236.205:8080/api/auth/login \
         -H "Content-Type: application/json" \
         -d '{"username":"admin","password":"123456"}'
    ```
@@ -103,7 +103,7 @@ We use **JWT access token (AT)** obtained from the login API to authenticate Web
 
 1. **Connect to WebSocket server**:
    ```bash
-   wscat -c ws://localhost:10827/ws
+   wscat -c ws://3.144.236.205:10827/ws
    ```
 
 2. **Send AUTH message** (replace `<jwt>` with real JWT):
@@ -566,7 +566,7 @@ The query system uses **GeoHash prefix matching** with adaptive precision based 
 
 **Test Query with zoom=12 (District level)**:
 ```bash
-curl -X POST http://localhost:8080/api/mapPost/nearby \
+curl -X POST http://3.144.236.205:8080/api/mapPost/nearby \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -d '{
@@ -612,7 +612,7 @@ curl -X POST http://localhost:8080/api/mapPost/nearby \
 
 **Test Query with zoom=5 (City level)**:
 ```bash
-curl -X POST http://localhost:8080/api/mapPost/nearby \
+curl -X POST http://3.144.236.205:8080/api/mapPost/nearby \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -d '{
@@ -657,7 +657,7 @@ curl -X POST http://localhost:8080/api/mapPost/nearby \
 Query only specific post types:
 
 ```bash
-curl -X POST http://localhost:8080/api/mapPost/nearby \
+curl -X POST http://3.144.236.205:8080/api/mapPost/nearby \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -d '{

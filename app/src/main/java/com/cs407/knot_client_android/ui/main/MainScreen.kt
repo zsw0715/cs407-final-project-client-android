@@ -168,7 +168,7 @@ fun MainScreen(
             ChatRoute(
                 navController = navController,
                 appContext = LocalContext.current,
-                baseUrl = "http://10.0.101.215:8080/" // Production server
+                baseUrl = "http://3.144.236.205:8080/" // Production server
             )
         }
         

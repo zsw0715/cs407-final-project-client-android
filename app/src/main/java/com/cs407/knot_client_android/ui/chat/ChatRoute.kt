@@ -13,7 +13,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 fun ChatRoute(
     navController: NavHostController,
     appContext: Context,
-    baseUrl: String = "http://10.0.101.215:8080/"
+    baseUrl: String = "http://3.144.236.205:8080/"
 ) {
     val api = remember(baseUrl) {
         Retrofit.Builder()
